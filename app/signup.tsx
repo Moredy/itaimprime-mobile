@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, StyleSheet, Text, View } from "react-native";
@@ -7,8 +7,11 @@ import { z } from "zod";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Header } from "@/components/Header";
+import { SelectField } from "@/components/SelectField";
 import { Screen } from "@/components/Screen";
+import { LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
+import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
@@ -17,7 +20,7 @@ import { getErrorMessage } from "@/utils/errors";
 const signupSchema = z
   .object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres."),
-    specialty: z.string().min(2, "Especialidade deve ter pelo menos 2 caracteres."),
+    specialty: z.string(),
     password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres."),
     confirmPassword: z.string().min(6, "Confirme a senha."),
   })
@@ -31,6 +34,13 @@ export default function SignupScreen() {
   const email = params.email ?? "";
   const { signIn } = useAuth();
 
+  const specialtyOptionsQuery = useQuery({
+    queryKey: queryKeys.specialtyOptions,
+    queryFn: () => trpcClient.settings.getSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
+  });
+
+  const specialtyOptions = (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name }));
+
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -42,13 +52,18 @@ export default function SignupScreen() {
   });
 
   const signupMutation = useMutation({
-    mutationFn: (data: z.infer<typeof signupSchema>) =>
-      trpcClient.auth.signup.mutate({
+    mutationFn: (data: z.infer<typeof signupSchema>) => {
+      if (!data.specialty || !specialtyOptions.some((option) => option.value === data.specialty)) {
+        throw new Error("Selecione uma especialidade valida da lista.");
+      }
+
+      return trpcClient.auth.signup.mutate({
         email,
         name: data.name.trim(),
-        specialty: data.specialty.trim(),
+        specialty: data.specialty,
         password: data.password,
-      }),
+      });
+    },
     onSuccess: async (_, data) => {
       await signIn(email, data.password);
       router.replace("/appointments");
@@ -82,7 +97,18 @@ export default function SignupScreen() {
             control={form.control}
             name="specialty"
             render={({ field, fieldState }) => (
-              <TextField label="Especialidade" value={field.value} onChangeText={field.onChange} error={fieldState.error?.message} />
+              <View style={styles.fieldBlock}>
+                {specialtyOptionsQuery.isLoading ? <LoadingState label="Carregando especialidades..." /> : null}
+                <SelectField
+                  label="Especialidade"
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  options={specialtyOptions}
+                  placeholder="Selecione uma especialidade"
+                  enabled={specialtyOptions.length > 0}
+                  error={fieldState.error?.message}
+                />
+              </View>
             )}
           />
           <Controller
@@ -119,5 +145,8 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 14,
+  },
+  fieldBlock: {
+    gap: 6,
   },
 });

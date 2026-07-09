@@ -6,6 +6,7 @@ export const queryKeys = {
   contracts: (limit = 10, offset = 0) => ["contracts", limit, offset] as const,
   contractDetails: (contractId: number | null) => ["contract-details", contractId ?? "none"] as const,
   consultationTypes: ["consultation-types"] as const,
+  specialtyOptions: ["specialty-options"] as const,
   userSettings: ["user-settings"] as const,
   doctorWorkingHours: ["doctor-working-hours"] as const,
   slots: (date: string, roomId: string, duration: number) =>

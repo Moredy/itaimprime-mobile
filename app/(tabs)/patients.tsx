@@ -155,8 +155,6 @@ export default function PatientsScreen() {
         <EmptyState
           title={search ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
           description={search ? "Tente outro termo de busca." : "Cadastre o primeiro paciente para usar nos agendamentos."}
-          actionLabel="Novo paciente"
-          onAction={openCreate}
         />
       ) : null}
 

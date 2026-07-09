@@ -5,6 +5,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { DateTimeField } from "@/components/DateTimeField";
 import { Header } from "@/components/Header";
+import { SelectField } from "@/components/SelectField";
 import { Screen } from "@/components/Screen";
 import { LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
@@ -19,12 +20,46 @@ const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshSession } = useAuth();
   const [minimumAdvanceHours, setMinimumAdvanceHours] = React.useState("24");
   const [specialty, setSpecialty] = React.useState(user?.specialty ?? "");
   const [typeName, setTypeName] = React.useState("");
   const [typeDuration, setTypeDuration] = React.useState("30");
   const [workingHours, setWorkingHours] = React.useState<DoctorWorkingHoursDay[]>([]);
+
+  const specialtyOptionsQuery = useQuery({
+    queryKey: queryKeys.specialtyOptions,
+    queryFn: () => trpcClient.settings.getSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
+  });
+
+  const specialtyOptions = React.useMemo(
+    () => (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name })),
+    [specialtyOptionsQuery.data],
+  );
+
+  const minimumAdvanceHourOptions = React.useMemo(() => {
+    const baseOptions = [1, 2, 4, 6, 8, 12, 24, 48, 72];
+    const selectedValue = Number(minimumAdvanceHours);
+    const options = Number.isFinite(selectedValue) && selectedValue > 0 ? Array.from(new Set([...baseOptions, selectedValue])).sort((a, b) => a - b) : baseOptions;
+
+    return options.map((hours) => ({
+      label: `${hours} hora${hours === 1 ? "" : "s"}`,
+      value: String(hours),
+    }));
+  }, [minimumAdvanceHours]);
+
+  const consultationDurationOptions = React.useMemo(() => {
+    const baseOptions = [15, 20, 30, 40, 45, 50, 60, 90, 120];
+    const selectedValue = Number(typeDuration);
+    const options = Number.isFinite(selectedValue) && selectedValue >= 15 ? Array.from(new Set([...baseOptions, selectedValue])).sort((a, b) => a - b) : baseOptions;
+
+    return options.map((minutes) => ({
+      label: `${minutes} min`,
+      value: String(minutes),
+    }));
+  }, [typeDuration]);
+
+  const isSelectedSpecialtyValid = !specialty || specialtyOptions.some((option) => option.value === specialty);
 
   const userSettingsQuery = useQuery({
     queryKey: queryKeys.userSettings,
@@ -61,15 +96,25 @@ export default function SettingsScreen() {
 
   const savePreferences = useMutation({
     mutationFn: async () => {
+      if (!isSelectedSpecialtyValid) {
+        throw new Error("Selecione uma especialidade valida da lista.");
+      }
+
+      const parsedMinimumAdvanceHours = Number(minimumAdvanceHours);
+      if (!Number.isFinite(parsedMinimumAdvanceHours) || parsedMinimumAdvanceHours < 1) {
+        throw new Error("Selecione uma antecedencia minima valida.");
+      }
+
       await Promise.all([
         trpcClient.settings.updateUserSettings.mutate({
-          minimumAdvanceHours: Number(minimumAdvanceHours),
+          minimumAdvanceHours: parsedMinimumAdvanceHours,
         }),
-        trpcClient.settings.updateSpecialty.mutate({ specialty: specialty.trim() }),
+        trpcClient.settings.updateSpecialty.mutate({ specialty: specialty || null }),
       ]);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       invalidateSettings();
+      await refreshSession();
       const message = "Preferencias salvas com sucesso.";
       if (Platform.OS === "android") {
         ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -158,8 +203,23 @@ export default function SettingsScreen() {
 
       <Card>
         <Text style={styles.sectionTitle}>Preferencias</Text>
-        <TextField label="Antecedencia minima (horas)" keyboardType="number-pad" value={minimumAdvanceHours} onChangeText={setMinimumAdvanceHours} />
-        <TextField label="Especialidade" value={specialty} onChangeText={setSpecialty} />
+        <SelectField
+          label="Antecedencia minima (horas)"
+          value={minimumAdvanceHours}
+          onValueChange={setMinimumAdvanceHours}
+          options={minimumAdvanceHourOptions}
+          placeholder="Selecione a antecedencia"
+        />
+        {specialtyOptionsQuery.isLoading ? <LoadingState label="Carregando especialidades..." /> : null}
+        <SelectField
+          label="Especialidade"
+          value={specialty}
+          onValueChange={setSpecialty}
+          options={specialtyOptions}
+          placeholder="Sem especialidade"
+          enabled={specialtyOptions.length > 0}
+        />
+        {specialty && !isSelectedSpecialtyValid ? <Text style={styles.warningText}>A especialidade atual nao esta no dominio. Selecione uma opcao valida para salvar.</Text> : null}
         <Button title="Salvar preferencias" loading={savePreferences.isPending} onPress={() => savePreferences.mutate()} />
       </Card>
 
@@ -176,7 +236,13 @@ export default function SettingsScreen() {
           </Pressable>
         ))}
         <TextField label="Nome do tipo" value={typeName} onChangeText={setTypeName} />
-        <TextField label="Duracao em minutos" keyboardType="number-pad" value={typeDuration} onChangeText={setTypeDuration} />
+        <SelectField
+          label="Duracao em minutos"
+          value={typeDuration}
+          onValueChange={setTypeDuration}
+          options={consultationDurationOptions}
+          placeholder="Selecione a duracao"
+        />
         <Button
           title="Adicionar tipo"
           loading={createConsultationType.isPending}
@@ -277,6 +343,11 @@ const styles = StyleSheet.create({
   },
   dayTitleActive: {
     color: colors.primaryLight,
+  },
+  warningText: {
+    color: colors.warning,
+    fontSize: 12,
+    fontWeight: "600",
   },
   timeInput: {
     flex: 1,
