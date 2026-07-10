@@ -160,8 +160,9 @@ export default function AppointmentsScreen() {
   const isNonGoldPlan = !contractsQuery.isLoading && !isGoldPlan;
   const canSelectRoom = !isNonGoldPlan;
   const isRoomLockedOnEdit = formMode === "edit" && isNonGoldPlan;
-  const shouldForceByTimeOnEdit = formMode === "edit" && isNonGoldPlan;
-  const shouldUseAutoRotationOnEdit = formMode === "edit" && isNonGoldPlan;
+  const shouldForceByTimeOnEdit = false;
+  const shouldUseAutoRotationOnEdit = false;
+  const shouldOfferAutoRotationOnEdit = formMode === "edit" && !isNonGoldPlan;
   const shouldFilterGynecologyRooms = isCreating && isGoldPlan && !isGynecologyDoctor;
 
   const rooms = roomsQuery.data ?? [];
@@ -179,6 +180,10 @@ export default function AppointmentsScreen() {
     () => roomsForTime.filter((room) => isRoomGynecology(room)),
     [roomsForTime],
   );
+  const selectedRoomForLockedEdit = React.useMemo(
+    () => selectableRooms.find((room) => room.id === roomId),
+    [roomId, selectableRooms],
+  );
   const selectedAutoRoomCandidateId = React.useMemo(() => {
     if (roomId === AUTO_SELECT_GYNECOLOGY_ROOM_ID) {
       return gynecologyRoomsForTime[0]?.id;
@@ -193,7 +198,8 @@ export default function AppointmentsScreen() {
   }, [gynecologyRoomsForTime, roomId, selectableRoomsForTime]);
   const shouldShowGynecologyAutoRotation = isNonGoldPlan && isGynecologyDoctor;
   const canPickGynecologyAutoRotation = !time || roomsForTimeQuery.isFetching || gynecologyRoomsForTime.length > 0;
-  const shouldUseAutoRotationSelection = (isCreating && !canSelectRoom) || shouldUseAutoRotationOnEdit;
+  const shouldShowAutoRotationSelection = (isCreating && !canSelectRoom) || shouldOfferAutoRotationOnEdit;
+  const shouldRestrictToAutoRotationSelection = isCreating && !canSelectRoom;
 
   React.useEffect(() => {
     if (isCreating && !canSelectRoom && scheduleMode === "by-room") {
@@ -204,16 +210,10 @@ export default function AppointmentsScreen() {
   }, [canSelectRoom, isCreating, scheduleMode]);
 
   React.useEffect(() => {
-    if (isRoomLockedOnEdit && !shouldForceByTimeOnEdit && scheduleMode !== "by-room") {
+    if (isRoomLockedOnEdit && scheduleMode !== "by-room") {
       setScheduleMode("by-room");
     }
-  }, [isRoomLockedOnEdit, scheduleMode, shouldForceByTimeOnEdit]);
-
-  React.useEffect(() => {
-    if (shouldForceByTimeOnEdit && scheduleMode !== "by-time") {
-      setScheduleMode("by-time");
-    }
-  }, [scheduleMode, shouldForceByTimeOnEdit]);
+  }, [isRoomLockedOnEdit, scheduleMode]);
 
   React.useEffect(() => {
     if (!editingAppointment || !isRoomLockedOnEdit || shouldUseAutoRotationOnEdit) {
@@ -345,13 +345,8 @@ export default function AppointmentsScreen() {
   };
 
   const setMode = (mode: ScheduleMode) => {
-    if (shouldForceByTimeOnEdit && mode !== "by-time") {
-      Alert.alert("Modo por horario", "Na edicao deste plano a consulta deve permanecer no modo por horario.");
-      return;
-    }
-
-    if (isRoomLockedOnEdit && mode === "by-room") {
-      Alert.alert("Sala bloqueada", "Sem plano nao e permitido editar a sala da consulta.");
+    if (isRoomLockedOnEdit && mode !== "by-room") {
+      Alert.alert("Sala bloqueada", "Sem plano nao e permitido trocar a sala da consulta.");
       return;
     }
 
@@ -386,7 +381,8 @@ export default function AppointmentsScreen() {
     duration <= 120 &&
     roomId &&
     (withoutPatient || patientId) &&
-    (!shouldUseAutoRotationOnEdit || (!needsAutoRoomRevalidation && isAutoRotationRoomId(roomId) && Boolean(selectedAutoRoomCandidateId)));
+    (!shouldUseAutoRotationOnEdit || (!needsAutoRoomRevalidation && isAutoRotationRoomId(roomId) && Boolean(selectedAutoRoomCandidateId))) &&
+    (!isAutoRotationRoomId(roomId) || Boolean(selectedAutoRoomCandidateId));
 
   const submit = () => {
     if (!canSubmit) {
@@ -398,6 +394,10 @@ export default function AppointmentsScreen() {
       return;
     }
     if (shouldUseAutoRotationOnEdit && isAutoRotationRoomId(roomId) && !selectedAutoRoomCandidateId) {
+      Alert.alert("Sem disponibilidade", "Nao ha sala disponivel para o rotativo no horario selecionado.");
+      return;
+    }
+    if (isAutoRotationRoomId(roomId) && !selectedAutoRoomCandidateId) {
       Alert.alert("Sem disponibilidade", "Nao ha sala disponivel para o rotativo no horario selecionado.");
       return;
     }
@@ -489,20 +489,21 @@ export default function AppointmentsScreen() {
                   variant={scheduleMode === "by-room" ? "primary" : "secondary"}
                   onPress={() => setMode("by-room")}
                   style={styles.segmentButton}
-                  disabled={(isCreating && isNonGoldPlan) || isRoomLockedOnEdit || shouldForceByTimeOnEdit}
+                  disabled={isCreating && isNonGoldPlan}
                 />
                 <Button
                   title="Por horario"
                   variant={scheduleMode === "by-time" ? "primary" : "secondary"}
                   onPress={() => setMode("by-time")}
                   style={styles.segmentButton}
+                  disabled={isRoomLockedOnEdit}
                 />
               </View>
 
-              {shouldForceByTimeOnEdit ? (
+              {isRoomLockedOnEdit ? (
                 <View style={styles.planHint}>
                   <Text style={styles.planHintTitle}>Sem plano (edicao)</Text>
-                  <Text style={styles.planHintText}>Use o modo por horario e selecione rotativo. A consulta permanece sempre por horario.</Text>
+                  <Text style={styles.planHintText}>A sala atual e exibida e permanece bloqueada. Voce pode editar os demais campos da consulta.</Text>
                 </View>
               ) : null}
 
@@ -535,19 +536,30 @@ export default function AppointmentsScreen() {
                 <>
                   <Text style={styles.sectionTitle}>Sala</Text>
                   <View style={styles.optionGrid}>
-                    {selectableRooms.map((room) => (
-                      <Pressable
-                        key={room.id}
-                        onPress={() => {
-                          if (isRoomLockedOnEdit) return;
-                          setRoomId(room.id);
-                        }}
-                        style={[styles.option, roomId === room.id && styles.optionActive, isRoomLockedOnEdit && roomId !== room.id && styles.optionDisabled]}
-                      >
-                        <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                        <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
-                      </Pressable>
-                    ))}
+                    {isRoomLockedOnEdit ? (
+                      roomId ? (
+                        <Pressable style={[styles.option, styles.optionActive]}>
+                          <Text style={[styles.optionTitle, styles.optionTitleActive]}>{selectedRoomForLockedEdit?.name ?? `Sala ${roomId}`}</Text>
+                          <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.specialties?.join(", ") || "Sala bloqueada para edicao"}</Text>
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.emptyHint}>Nenhuma sala selecionada para esta consulta.</Text>
+                      )
+                    ) : (
+                      selectableRooms.map((room) => (
+                        <Pressable
+                          key={room.id}
+                          onPress={() => {
+                            if (isRoomLockedOnEdit) return;
+                            setRoomId(room.id);
+                          }}
+                          style={[styles.option, roomId === room.id && styles.optionActive, isRoomLockedOnEdit && roomId !== room.id && styles.optionDisabled]}
+                        >
+                          <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
+                          <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                        </Pressable>
+                      ))
+                    )}
                   </View>
                   {roomId ? (
                     <>
@@ -594,7 +606,7 @@ export default function AppointmentsScreen() {
                   />
                   <Text style={styles.sectionTitle}>Salas disponiveis</Text>
                   {roomsForTimeQuery.isFetching ? <LoadingState label="Buscando salas..." /> : null}
-                  {shouldUseAutoRotationSelection ? (
+                  {shouldShowAutoRotationSelection ? (
                     <View style={styles.optionGrid}>
                       {shouldShowGynecologyAutoRotation ? (
                         <>
@@ -635,7 +647,9 @@ export default function AppointmentsScreen() {
                         </>
                       )}
                     </View>
-                  ) : (
+                  ) : null}
+
+                  {!shouldRestrictToAutoRotationSelection ? (
                     <View style={styles.optionGrid}>
                       {selectableRoomsForTime.map((room) => (
                         <Pressable
@@ -651,7 +665,7 @@ export default function AppointmentsScreen() {
                         </Pressable>
                       ))}
                     </View>
-                  )}
+                  ) : null}
                 </>
               )}
 
