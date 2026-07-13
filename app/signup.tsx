@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
@@ -20,7 +21,7 @@ import { getErrorMessage } from "@/utils/errors";
 const signupSchema = z
   .object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres."),
-    specialty: z.string().min(1, "Selecione uma especialidade valida da lista."),
+    specialty: z.string(),
     password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres."),
     confirmPassword: z.string().min(6, "Confirme a senha."),
   })
@@ -46,22 +47,32 @@ export default function SignupScreen() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: params.name ?? "",
-      specialty: params.specialty ?? "",
+      specialty: "",
       password: "",
       confirmPassword: "",
     },
   });
 
+  useEffect(() => {
+    const specialtyFromParams = params.specialty ?? "";
+    if (specialtyFromParams && isSelectedSpecialtyValid(specialtyFromParams)) {
+      form.setValue("specialty", specialtyFromParams, { shouldValidate: true });
+      return;
+    }
+
+    form.setValue("specialty", "", { shouldValidate: false });
+  }, [form, isSelectedSpecialtyValid, params.specialty]);
+
   const signupMutation = useMutation({
     mutationFn: (data: z.infer<typeof signupSchema>) => {
-      if (!data.specialty || !isSelectedSpecialtyValid(data.specialty)) {
+      if (data.specialty && !isSelectedSpecialtyValid(data.specialty)) {
         throw new Error("Selecione uma especialidade valida da lista.");
       }
 
       return trpcClient.auth.signup.mutate({
         email,
         name: data.name.trim(),
-        specialty: data.specialty,
+        specialty: data.specialty || null,
         password: data.password,
       });
     },
@@ -105,7 +116,7 @@ export default function SignupScreen() {
                   value={isSelectedSpecialtyValid(field.value) ? field.value : ""}
                   onValueChange={field.onChange}
                   options={specialtyOptions}
-                  placeholder="Selecione uma especialidade"
+                  placeholder="Sem especialidade"
                   enabled={specialtyOptions.length > 0}
                   error={fieldState.error?.message}
                 />
