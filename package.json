@@ -1,6 +1,6 @@
 {
-  "name": "agendamento-medico-mobile",
-  "version": "0.1.0",
+  "name": "itaim-prime-lounge",
+  "version": "1.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {

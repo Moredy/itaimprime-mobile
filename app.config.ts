@@ -1,6 +1,9 @@
 import type { ExpoConfig } from "expo/config";
 
 const appEnv = process.env.APP_ENV ?? "dev";
+const appName = process.env.APP_NAME ?? "Itaim Prime Lounge";
+const appSlug = process.env.APP_SLUG ?? "itaim-prime-lounge";
+const iosDisplayName = "Itaim\u2007Prime\u2007Lounge";
 
 const apiUrlByEnv: Record<string, string> = {
   dev: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000",
@@ -9,10 +12,10 @@ const apiUrlByEnv: Record<string, string> = {
 };
 
 const config: ExpoConfig = {
-  name: "Agenda Medica Itaim Prime",
-  slug: "agendamento-medico-mobile",
+  name: appName,
+  slug: appSlug,
   scheme: "agendamedica",
-  version: "0.1.0",
+  version: "1.0.0",
   icon: "./assets/icon.png",
   orientation: "portrait",
   userInterfaceStyle: "light",
@@ -25,6 +28,9 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.itaimprime.agendamedica",
+    infoPlist: {
+      CFBundleDisplayName: iosDisplayName,
+    },
   },
   android: {
     package: "com.itaimprime.agendamedica",
