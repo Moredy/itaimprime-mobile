@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
@@ -7,7 +8,6 @@ import { z } from "zod";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { DateTimeField } from "@/components/DateTimeField";
-import { Header } from "@/components/Header";
 import { AppTopBar } from "@/components/AppTopBar";
 import { Screen } from "@/components/Screen";
 import { EmptyState, LoadingState } from "@/components/StateView";
@@ -16,7 +16,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { colors } from "@/theme/colors";
 import type { Patient } from "@/types/api";
-import { dateInputValue, formatCpf, formatDate, formatPhone, onlyDigits } from "@/utils/format";
+import { formatCpf, formatDate, formatPhone, onlyDigits } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
 
 const patientSchema = z.object({
@@ -32,6 +32,7 @@ const patientSchema = z.object({
 type PatientForm = z.infer<typeof patientSchema>;
 
 export default function PatientsScreen() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const today = React.useMemo(() => {
     const now = new Date();
@@ -46,7 +47,6 @@ export default function PatientsScreen() {
   }, []);
   const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
 
   const patientsQuery = useQuery({
     queryKey: queryKeys.patients(search),
@@ -65,25 +65,19 @@ export default function PatientsScreen() {
 
   const closeModal = () => {
     setModalOpen(false);
-    setEditingPatient(null);
     form.reset({ name: "", cpf: "", birthDate: "", phone: "" });
   };
 
   const openCreate = () => {
-    setEditingPatient(null);
     form.reset({ name: "", cpf: "", birthDate: "", phone: "" });
     setModalOpen(true);
   };
 
   const openEdit = (patient: Patient) => {
-    setEditingPatient(patient);
-    form.reset({
-      name: patient.name,
-      cpf: formatCpf(patient.cpf),
-      birthDate: dateInputValue(patient.birthDate),
-      phone: formatPhone(patient.phone),
+    router.push({
+      pathname: "/edit-patient",
+      params: { patientId: patient.id },
     });
-    setModalOpen(true);
   };
 
   const invalidatePatients = () => queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -103,43 +97,9 @@ export default function PatientsScreen() {
     onError: (error) => Alert.alert("Erro ao cadastrar", getErrorMessage(error)),
   });
 
-  const updatePatient = useMutation({
-    mutationFn: (data: PatientForm) =>
-      trpcClient.patient.update.mutate({
-        id: editingPatient?.id,
-        name: data.name.trim(),
-        cpf: onlyDigits(data.cpf),
-        birthDate: new Date(`${data.birthDate}T00:00:00`),
-        phone: onlyDigits(data.phone),
-      }),
-    onSuccess: () => {
-      void invalidatePatients();
-      closeModal();
-    },
-    onError: (error) => Alert.alert("Erro ao atualizar", getErrorMessage(error)),
-  });
-
-  const deletePatient = useMutation({
-    mutationFn: (id: string) => trpcClient.patient.delete.mutate({ id }),
-    onSuccess: () => {
-      void invalidatePatients();
-      closeModal();
-    },
-    onError: (error) => Alert.alert("Erro ao excluir", getErrorMessage(error)),
-  });
-
   const submit = form.handleSubmit((data) => {
-    if (editingPatient) updatePatient.mutate(data);
-    else createPatient.mutate(data);
+    createPatient.mutate(data);
   });
-
-  const confirmDelete = () => {
-    if (!editingPatient) return;
-    Alert.alert("Excluir paciente", `Deseja excluir ${editingPatient.name}?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: () => deletePatient.mutate(editingPatient.id) },
-    ]);
-  };
 
   const patients = patientsQuery.data ?? [];
 
@@ -177,7 +137,9 @@ export default function PatientsScreen() {
 
       <Modal visible={modalOpen} animationType="slide" onRequestClose={closeModal} presentationStyle="pageSheet">
         <Screen>
-          <Header title={editingPatient ? "Editar paciente" : "Novo paciente"} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalHeaderTitle}>Novo paciente</Text>
+          </View>
           <Card>
             <View style={styles.form}>
               <Controller
@@ -229,8 +191,7 @@ export default function PatientsScreen() {
                   />
                 )}
               />
-              <Button title={editingPatient ? "Atualizar paciente" : "Salvar paciente"} loading={createPatient.isPending || updatePatient.isPending} onPress={submit} />
-              {editingPatient ? <Button title="Excluir paciente" variant="danger" loading={deletePatient.isPending} onPress={confirmDelete} /> : null}
+              <Button title="Salvar paciente" loading={createPatient.isPending} onPress={submit} />
               <Button title="Cancelar" variant="secondary" onPress={closeModal} />
             </View>
           </Card>
@@ -266,6 +227,16 @@ const styles = StyleSheet.create({
   detail: {
     color: colors.muted,
     fontSize: 14,
+  },
+  modalHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: 12,
+  },
+  modalHeaderTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "500",
   },
   form: {
     gap: 14,

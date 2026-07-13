@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Platform, StyleSheet, Text, ToastAndroid } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, ToastAndroid } from "react-native";
 import { AppTopBar } from "@/components/AppTopBar";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -124,12 +124,11 @@ export default function SettingsScreen() {
         <Text style={styles.deleteDescription}>
           Ao excluir sua conta, todos os seus dados serao removidos de forma definitiva.
         </Text>
-        <Button
-          title="Excluir minha conta"
-          variant="danger"
-          loading={deleteAccount.isPending}
-          onPress={handleDeleteAccount}
-        />
+        <Pressable onPress={handleDeleteAccount} disabled={deleteAccount.isPending} style={styles.deleteAction}>
+          <Text style={[styles.deleteActionText, deleteAccount.isPending && styles.deleteActionTextDisabled]}>
+            {deleteAccount.isPending ? "Excluindo..." : "Excluir minha conta"}
+          </Text>
+        </Pressable>
       </Card>
     </Screen>
   );
@@ -153,7 +152,7 @@ const styles = StyleSheet.create({
   },
   deleteTitle: {
     marginTop: 8,
-    color: colors.danger,
+    color: colors.primary,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -161,5 +160,18 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     lineHeight: 18,
+  },
+  deleteAction: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+  },
+  deleteActionText: {
+    color: colors.danger,
+    fontSize: 14,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+  deleteActionTextDisabled: {
+    opacity: 0.6,
   },
 });

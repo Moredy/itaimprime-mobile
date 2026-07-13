@@ -351,23 +351,10 @@ export default function AppointmentsScreen() {
       return;
     }
 
-    const start = toDate(appointment.startTime);
-    const end = toDate(appointment.endTime);
-    setFormMode("edit");
-    setEditingAppointment(appointment);
-    setTitle(appointment.title);
-    setDescription(appointment.description ?? "");
-    setDate(format(start, "yyyy-MM-dd"));
-    setTime(format(start, "HH:mm"));
-    setDuration(differenceInMinutes(end, start));
-    setRoomId(appointment.roomId);
-    setPatientId(appointment.patientId ?? "");
-    setWithoutPatient(!appointment.patientId);
-    setCreateStep(1);
-    setRoomSelectionMode(isAutoRotationRoomId(appointment.roomId) ? "rotative" : "specific");
-    setScheduleMode(isAutoRotationRoomId(appointment.roomId) ? "by-time" : "by-room");
-    setNeedsAutoRoomRevalidation(false);
-    setModalOpen(true);
+    router.push({
+      pathname: "/edit-appointment",
+      params: { appointmentId: appointment.id },
+    });
   };
 
   const setMode = (mode: ScheduleMode) => {
