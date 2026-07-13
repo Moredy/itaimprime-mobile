@@ -21,6 +21,7 @@ export default function RootLayout() {
         <Stack.Screen name="reset-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="new-appointment" />
+        <Stack.Screen name="new-patient" />
         <Stack.Screen name="edit-appointment" />
         <Stack.Screen name="edit-patient" />
       </Stack>
