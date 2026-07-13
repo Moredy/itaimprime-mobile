@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { DateTimeField } from "@/components/DateTimeField";
 import { Header } from "@/components/Header";
+import { AppTopBar } from "@/components/AppTopBar";
 import { Screen } from "@/components/Screen";
 import { EmptyState, LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
@@ -144,7 +145,7 @@ export default function PatientsScreen() {
 
   return (
     <Screen>
-      <Header title="Pacientes" subtitle="Gerencie os pacientes vinculados ao seu perfil medico." />
+      <AppTopBar />
       <View style={styles.toolbar}>
         <TextField label="Buscar" placeholder="Nome, CPF ou telefone" value={search} onChangeText={setSearch} />
         <Button title="Novo paciente" onPress={openCreate} />

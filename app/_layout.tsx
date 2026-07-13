@@ -20,6 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="signup" />
         <Stack.Screen name="reset-password" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="new-appointment" />
       </Stack>
     </AppProvider>
   );

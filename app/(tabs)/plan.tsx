@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { AppTopBar } from "@/components/AppTopBar";
 import { Card } from "@/components/Card";
-import { Header } from "@/components/Header";
 import { Screen } from "@/components/Screen";
 import { EmptyState, LoadingState } from "@/components/StateView";
 import { queryKeys } from "@/lib/queryKeys";
@@ -124,9 +124,9 @@ function formatBooleanPtBr(value: unknown): string {
   return "-";
 }
 
-function renderDetailLine(label: string, value: string) {
+function renderDetailLine(label: string, value: string, isLast = false) {
   return (
-    <View style={styles.detailRow}>
+    <View style={[styles.detailRow, isLast ? styles.detailRowLast : undefined]}>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
@@ -175,13 +175,14 @@ export default function PlanScreen() {
     retry: false,
   });
 
+  const contractDetails = contractDetailsQuery.data;
+  const isContractActive = formatBooleanPtBr(contractDetails?.isActive) === "Sim";
+
   return (
     <Screen>
-      <Header title="Meu plano" subtitle="Acompanhe os detalhes do contrato vinculado ao seu usuario." />
+      <AppTopBar />
 
-      <Card>
-        <Text style={styles.sectionTitle}>Plano contratado</Text>
-
+      <>
         {contractsQuery.isLoading ? <LoadingState label="Carregando planos contratados..." /> : null}
 
         {contractsQuery.error ? (
@@ -203,52 +204,165 @@ export default function PlanScreen() {
           <Text style={styles.errorText}>{getErrorMessage(contractDetailsQuery.error)}</Text>
         ) : null}
 
-        {selectedContractId !== null && contractDetailsQuery.data ? (
-          <View style={styles.detailList}>
-            {renderDetailLine("Contrato", String(contractDetailsQuery.data.contractId ?? selectedContractId))}
-            {renderDetailLine("Cliente", String(contractDetailsQuery.data.customerId ?? "-"))}
-            {renderDetailLine("Plano", String(contractDetailsQuery.data.planId ?? "-"))}
-            {renderDetailLine("Frequencia", formatFrequencyPtBr(contractDetailsQuery.data.paymentFrequency))}
-            {renderDetailLine("Inicio", formatDateValue(contractDetailsQuery.data.startDate))}
-            {renderDetailLine("Fim", formatDateValue(contractDetailsQuery.data.endDate))}
-            {renderDetailLine("Vencimento (dia)", String(contractDetailsQuery.data.dueDay ?? "-"))}
-            {renderDetailLine("Valor", formatCurrencyPtBr(contractDetailsQuery.data.amount))}
-            {renderDetailLine("Ativo", formatBooleanPtBr(contractDetailsQuery.data.isActive))}
-            {renderDetailLine("Resumo", String(contractDetailsQuery.data.contractSummary ?? "-"))}
+        {selectedContractId !== null && contractDetails ? (
+          <View style={styles.membershipCard}>
+
+
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderTextBox}>
+                <Text style={styles.cardEyebrow}>Detalhes do plano</Text>
+                <Text style={styles.cardContractText}>
+               
+                   {String(contractDetails.contractSummary ?? "-")}
+                </Text>
+              </View>
+
+            </View>
+
+            <View style={styles.cardBody}>
+              {renderDetailLine("Frequencia", formatFrequencyPtBr(contractDetails.paymentFrequency))}
+              {renderDetailLine("Inicio", formatDateValue(contractDetails.startDate))}
+              {renderDetailLine("Fim", formatDateValue(contractDetails.endDate))}
+              {renderDetailLine("Vencimento (dia)", String(contractDetails.dueDay ?? "-"))}
+              {renderDetailLine("Valor", formatCurrencyPtBr(contractDetails.amount), true)}
+            </View>
+
+
           </View>
         ) : null}
-      </Card>
+      </>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: {
-    color: colors.primary,
-    fontSize: 17,
+  membershipCard: {
+    borderWidth: 1,
+    borderColor: "#D9D6C2",
+    borderRadius: 16,
+    backgroundColor: "#FDFCf8",
+    overflow: "hidden",
+    shadowColor: "#141B34",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  brandStrip: {
+    backgroundColor: "#141B34",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2F4F88",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  brandStripText: {
+    color: "#D9D6C2",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  cardHeader: {
+    backgroundColor: "#141B34",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  cardHeaderTextBox: {
+    flex: 1,
+    gap: 3,
+  },
+  cardEyebrow: {
+    color: "#D9D6C2",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  cardContractText: {
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "900",
   },
-  detailRow: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    backgroundColor: colors.background,
+  statusBadge: {
+    borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 4,
+    paddingVertical: 5,
+    borderWidth: 1,
   },
-  detailList: {
-    gap: 8,
+  statusBadgeActive: {
+    backgroundColor: "#E7EFE5",
+    borderColor: "#B7CDAE",
+  },
+  statusBadgeInactive: {
+    backgroundColor: "#F4E2E0",
+    borderColor: "#E0BBB5",
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+  },
+  statusBadgeTextActive: {
+    color: "#2F5132",
+  },
+  statusBadgeTextInactive: {
+    color: "#843E37",
+  },
+  cardBody: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FDFCF8",
+    gap: 0,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 14,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: "#E2DED1",
+  },
+  detailRowLast: {
+    borderBottomWidth: 0,
   },
   detailLabel: {
-    color: colors.primary,
-    fontSize: 12,
+    color: "#797984",
+    fontSize: 11,
     fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   detailValue: {
-    color: colors.text,
+    color: "#141B34",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  summaryBlock: {
+    borderTopWidth: 1,
+    borderColor: "#D9D6C2",
+    backgroundColor: "#ECE8D8",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  summaryLabel: {
+    color: "#4A4F63",
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  summaryValue: {
+    color: "#141B34",
+    fontSize: 15,
+    fontWeight: "900",
   },
   errorText: {
     color: colors.danger,

@@ -41,8 +41,30 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="settings"
           options={{
-            title: "Ajustes",
+            href: null,
+            title: "Perfil",
             tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" color={color} size={size} />,
+          }}
+        />
+        <Tabs.Screen
+          name="preferences"
+          options={{
+            href: null,
+            title: "Preferencias",
+          }}
+        />
+        <Tabs.Screen
+          name="consultation-types"
+          options={{
+            href: null,
+            title: "Tipos de consulta",
+          }}
+        />
+        <Tabs.Screen
+          name="working-hours"
+          options={{
+            href: null,
+            title: "Horarios de atendimento",
           }}
         />
       </Tabs>
