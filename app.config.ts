@@ -51,7 +51,7 @@ const config: ExpoConfig = {
     appEnv,
     apiUrl: apiUrlByEnv[appEnv] ?? apiUrlByEnv.dev,
     eas: {
-      projectId: "configure-no-eas",
+      projectId: "a803c5e2-1bf0-488b-a4cb-98d1eed221dd",
     },
   },
 };
