@@ -32,10 +32,10 @@ export function AppTopBar() {
             <Pressable style={styles.sideMenuCloseButton} onPress={() => setSideMenuOpen(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/preferences")}>
+            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/settings")}>
               <View style={styles.sideMenuItemContent}>
-                <Ionicons name="options-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Preferencias</Text>
+                <Ionicons name="person-outline" size={18} color={colors.primaryLight} />
+                <Text style={styles.sideMenuItemText}>Perfil</Text>
               </View>
             </Pressable>
             <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/consultation-types")}>
@@ -50,10 +50,10 @@ export function AppTopBar() {
                 <Text style={styles.sideMenuItemText}>Horarios de atendimento</Text>
               </View>
             </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/settings")}>
+            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/preferences")}>
               <View style={styles.sideMenuItemContent}>
-                <Ionicons name="person-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Perfil</Text>
+                <Ionicons name="options-outline" size={18} color={colors.primaryLight} />
+                <Text style={styles.sideMenuItemText}>Preferencias</Text>
               </View>
             </Pressable>
           </View>

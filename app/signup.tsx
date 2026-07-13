@@ -20,7 +20,7 @@ import { getErrorMessage } from "@/utils/errors";
 const signupSchema = z
   .object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres."),
-    specialty: z.string(),
+    specialty: z.string().min(1, "Selecione uma especialidade valida da lista."),
     password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres."),
     confirmPassword: z.string().min(6, "Confirme a senha."),
   })
@@ -36,10 +36,11 @@ export default function SignupScreen() {
 
   const specialtyOptionsQuery = useQuery({
     queryKey: queryKeys.specialtyOptions,
-    queryFn: () => trpcClient.settings.getSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
+    queryFn: () => trpcClient.auth.getSignupSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
   });
 
   const specialtyOptions = (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name }));
+  const isSelectedSpecialtyValid = (value: string) => specialtyOptions.some((option) => option.value === value);
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -53,7 +54,7 @@ export default function SignupScreen() {
 
   const signupMutation = useMutation({
     mutationFn: (data: z.infer<typeof signupSchema>) => {
-      if (!data.specialty || !specialtyOptions.some((option) => option.value === data.specialty)) {
+      if (!data.specialty || !isSelectedSpecialtyValid(data.specialty)) {
         throw new Error("Selecione uma especialidade valida da lista.");
       }
 
@@ -101,7 +102,7 @@ export default function SignupScreen() {
                 {specialtyOptionsQuery.isLoading ? <LoadingState label="Carregando especialidades..." /> : null}
                 <SelectField
                   label="Especialidade"
-                  value={field.value}
+                  value={isSelectedSpecialtyValid(field.value) ? field.value : ""}
                   onValueChange={field.onChange}
                   options={specialtyOptions}
                   placeholder="Selecione uma especialidade"

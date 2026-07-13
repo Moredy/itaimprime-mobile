@@ -45,7 +45,7 @@ export default function LoginScreen() {
     mutationFn: (input: { email: string }) =>
       trpcClient.auth.checkUserStatus.mutate(input) as Promise<CheckUserStatusResult>,
     onSuccess: (data, variables) => {
-      if (data.isActive === false) {
+      if (data.existsInLocal && data.isActive === false) {
         Alert.alert("Acesso inativo", "Seu cadastro esta inativo. Entre em contato com o administrador.");
         return;
       }

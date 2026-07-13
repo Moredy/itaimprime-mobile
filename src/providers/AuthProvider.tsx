@@ -25,6 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const session = await authApi.getSession(cookie ?? undefined);
 
     if (session?.user) {
+      if (session.user.isActive === false) {
+        await sessionStore.clear();
+        setUser(null);
+        setStatus("unauthenticated");
+        return;
+      }
+
       setUser(session.user);
       setStatus("authenticated");
       return;

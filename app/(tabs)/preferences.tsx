@@ -15,14 +15,8 @@ import { getErrorMessage } from "@/utils/errors";
 
 export default function PreferencesScreen() {
   const queryClient = useQueryClient();
-  const { user, refreshSession } = useAuth();
+  const { refreshSession } = useAuth();
   const [minimumAdvanceHours, setMinimumAdvanceHours] = React.useState("24");
-  const [specialty, setSpecialty] = React.useState(user?.specialty ?? "");
-
-  const specialtyOptionsQuery = useQuery({
-    queryKey: queryKeys.specialtyOptions,
-    queryFn: () => trpcClient.settings.getSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
-  });
 
   const userSettingsQuery = useQuery({
     queryKey: queryKeys.userSettings,
@@ -46,13 +40,6 @@ export default function PreferencesScreen() {
     }));
   }, [minimumAdvanceHours]);
 
-  const specialtyOptions = React.useMemo(
-    () => (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name })),
-    [specialtyOptionsQuery.data],
-  );
-
-  const isSelectedSpecialtyValid = !specialty || specialtyOptions.some((option) => option.value === specialty);
-
   const savePreferences = useMutation({
     mutationFn: async () => {
       const parsedMinimumAdvanceHours = Number(minimumAdvanceHours);
@@ -60,21 +47,13 @@ export default function PreferencesScreen() {
         throw new Error("Selecione uma antecedencia minima valida.");
       }
 
-      if (!isSelectedSpecialtyValid) {
-        throw new Error("Selecione uma especialidade valida da lista.");
-      }
-
-      await Promise.all([
-        trpcClient.settings.updateUserSettings.mutate({
-          minimumAdvanceHours: parsedMinimumAdvanceHours,
-        }),
-        trpcClient.settings.updateSpecialty.mutate({ specialty: specialty || null }),
-      ]);
+      await trpcClient.settings.updateUserSettings.mutate({
+        minimumAdvanceHours: parsedMinimumAdvanceHours,
+      });
     },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.userSettings }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.specialtyOptions }),
       ]);
       await refreshSession();
 
@@ -94,7 +73,7 @@ export default function PreferencesScreen() {
 
       <Card>
         <Text style={styles.sectionTitle}>Preferencias</Text>
-        {userSettingsQuery.isLoading || specialtyOptionsQuery.isLoading ? <LoadingState label="Carregando configuracoes..." /> : null}
+        {userSettingsQuery.isLoading ? <LoadingState label="Carregando configuracoes..." /> : null}
 
         <SelectField
           label="Antecedencia minima (horas)"
@@ -103,19 +82,6 @@ export default function PreferencesScreen() {
           options={minimumAdvanceHourOptions}
           placeholder="Selecione a antecedencia"
         />
-
-        <SelectField
-          label="Especialidade"
-          value={specialty}
-          onValueChange={setSpecialty}
-          options={specialtyOptions}
-          placeholder="Sem especialidade"
-          enabled={specialtyOptions.length > 0}
-        />
-
-        {specialty && !isSelectedSpecialtyValid ? (
-          <Text style={styles.warningText}>A especialidade atual nao esta no dominio. Selecione uma opcao valida para salvar.</Text>
-        ) : null}
 
         <Button title="Salvar preferencias" loading={savePreferences.isPending} onPress={() => savePreferences.mutate()} />
       </Card>
@@ -128,10 +94,5 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 17,
     fontWeight: "900",
-  },
-  warningText: {
-    color: colors.warning,
-    fontSize: 12,
-    fontWeight: "600",
   },
 });
