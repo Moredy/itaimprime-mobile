@@ -9,6 +9,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "dev",
+        "EXPO_PUBLIC_API_URL": "https://agendamento-medico-app.3uwncj.easypanel.host",
         "APP_NAME": "Itaim Prime Lounge",
         "APP_SLUG": "itaim-prime-lounge"
       }
@@ -17,6 +18,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "homolog",
+        "EXPO_PUBLIC_API_URL": "https://agendamento-medico-app.3uwncj.easypanel.host",
         "APP_NAME": "Itaim Prime Lounge",
         "APP_SLUG": "itaim-prime-lounge"
       }
@@ -24,6 +26,7 @@
     "production": {
       "env": {
         "APP_ENV": "prod",
+        "EXPO_PUBLIC_API_URL": "https://agendamento-medico-app.3uwncj.easypanel.host",
         "APP_NAME": "Itaim Prime Lounge",
         "APP_SLUG": "itaim-prime-lounge"
       }

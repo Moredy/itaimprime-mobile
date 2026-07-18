@@ -50,21 +50,7 @@ export default function TabsLayout() {
           name="preferences"
           options={{
             href: null,
-            title: "Preferencias",
-          }}
-        />
-        <Tabs.Screen
-          name="consultation-types"
-          options={{
-            href: null,
-            title: "Tipos de consulta",
-          }}
-        />
-        <Tabs.Screen
-          name="working-hours"
-          options={{
-            href: null,
-            title: "Horarios de atendimento",
+            title: "Configurações",
           }}
         />
       </Tabs>

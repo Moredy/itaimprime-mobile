@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import { addMinutes, format } from "date-fns";
+import { format } from "date-fns";
 import React from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { DateTimeField } from "@/components/DateTimeField";
 import { Screen } from "@/components/Screen";
 import { LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
@@ -14,13 +15,19 @@ import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
-import type { ConsultationType, Patient, Room } from "@/types/api";
-import { addMinutesToDate, createLocalDate, formatCpf } from "@/utils/format";
+import type { Patient, Room } from "@/types/api";
+import { addMinutesToDate, createLocalDate, formatCpf, formatPhone, onlyDigits } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
 
 type CreateStep = 1 | 2 | 3 | 4;
 type RoomSelectionMode = "rotative" | "specific";
 type ContractRecord = Record<string, unknown>;
+type InlinePatientErrors = {
+  name?: string;
+  cpf?: string;
+  birthDate?: string;
+  phone?: string;
+};
 
 const AUTO_SELECT_ROOM_ID = "AUTO_SELECT";
 const AUTO_SELECT_GYNECOLOGY_ROOM_ID = "AUTO_SELECT_GYNECOLOGY";
@@ -60,6 +67,8 @@ const timeOptions = Array.from({ length: 40 }, (_, index) => {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
+const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
+
 const toMinutes = (value: string) => {
   const [hour, minute] = value.split(":").map(Number);
   return hour * 60 + minute;
@@ -85,25 +94,33 @@ export default function NewAppointmentScreen() {
     return now;
   }, []);
 
+  const birthDateDefault = React.useMemo(() => {
+    const baseDate = new Date();
+    baseDate.setFullYear(baseDate.getFullYear() - 30);
+    baseDate.setHours(0, 0, 0, 0);
+    return baseDate;
+  }, []);
+
   const [createStep, setCreateStep] = React.useState<CreateStep>(1);
   const [roomSelectionMode, setRoomSelectionMode] = React.useState<RoomSelectionMode>("rotative");
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [date, setDate] = React.useState("");
   const [time, setTime] = React.useState("");
-  const [duration, setDuration] = React.useState(0);
+  const [duration, setDuration] = React.useState(30);
   const [roomId, setRoomId] = React.useState("");
   const [patientId, setPatientId] = React.useState("");
-  const [withoutPatient, setWithoutPatient] = React.useState(false);
+  const [withoutPatient, setWithoutPatient] = React.useState(true);
+  const [showInlinePatientForm, setShowInlinePatientForm] = React.useState(false);
+  const [inlinePatientName, setInlinePatientName] = React.useState("");
+  const [inlinePatientCpf, setInlinePatientCpf] = React.useState("");
+  const [inlinePatientBirthDate, setInlinePatientBirthDate] = React.useState("");
+  const [inlinePatientPhone, setInlinePatientPhone] = React.useState("");
+  const [inlinePatientErrors, setInlinePatientErrors] = React.useState<InlinePatientErrors>({});
 
   const patientsQuery = useQuery({
     queryKey: queryKeys.patients(""),
     queryFn: () => trpcClient.patient.list.query({}) as Promise<Patient[]>,
-  });
-
-  const consultationTypesQuery = useQuery({
-    queryKey: queryKeys.consultationTypes,
-    queryFn: () => trpcClient.settings.getConsultationTypes.query() as Promise<ConsultationType[]>,
   });
 
   const contractsQuery = useQuery({
@@ -159,7 +176,7 @@ export default function NewAppointmentScreen() {
   });
 
   const createAppointment = useMutation({
-    mutationFn: () => {
+    mutationFn: ({ overridePatientId }: { overridePatientId?: string } = {}) => {
       const startTime = createLocalDate(date, time);
       const resolvedRoomId = isAutoRotationRoomId(roomId)
         ? roomId === AUTO_SELECT_GYNECOLOGY_ROOM_ID
@@ -172,12 +189,12 @@ export default function NewAppointmentScreen() {
       }
 
       return trpcClient.appointment.createAppointment.mutate({
-        title: title.trim(),
+        title: title.trim() || undefined,
         description: description.trim() || undefined,
         startTime,
         endTime: addMinutesToDate(startTime, duration),
         roomId: resolvedRoomId,
-        patientId: withoutPatient ? undefined : patientId,
+        patientId: withoutPatient ? undefined : overridePatientId ?? patientId,
         withoutPatient,
       });
     },
@@ -194,8 +211,26 @@ export default function NewAppointmentScreen() {
     onError: (error) => Alert.alert("Erro ao criar agendamento", getErrorMessage(error)),
   });
 
+  const resetInlinePatientForm = () => {
+    setInlinePatientName("");
+    setInlinePatientCpf("");
+    setInlinePatientBirthDate("");
+    setInlinePatientPhone("");
+    setInlinePatientErrors({});
+  };
+
+  const createInlinePatient = useMutation({
+    mutationFn: () =>
+      trpcClient.patient.create.mutate({
+        name: inlinePatientName.trim(),
+        cpf: onlyDigits(inlinePatientCpf),
+        birthDate: new Date(`${inlinePatientBirthDate}T00:00:00`),
+        phone: onlyDigits(inlinePatientPhone),
+      }) as Promise<Patient>,
+    onError: (error) => Alert.alert("Erro ao cadastrar paciente", getErrorMessage(error)),
+  });
+
   const patients = patientsQuery.data ?? [];
-  const consultationTypes = consultationTypesQuery.data ?? [];
   const isGynecologyDoctor = isGynecologySpecialty(user?.specialty);
   const isGoldPlan = React.useMemo(() => hasGoldPlan(contractsQuery.data?.data), [contractsQuery.data?.data]);
   const isNonGoldPlan = !contractsQuery.isLoading && !isGoldPlan;
@@ -223,14 +258,15 @@ export default function NewAppointmentScreen() {
     (createStep === 3 && Boolean(roomId)) ||
     createStep === 4;
 
+  const canCreateWithInlinePatient = !withoutPatient && showInlinePatientForm;
+
   const canSubmit =
-    title.trim() &&
     date &&
     time &&
     duration >= 30 &&
     duration <= 120 &&
     roomId &&
-    (withoutPatient || patientId) &&
+    (withoutPatient || patientId || canCreateWithInlinePatient) &&
     (!isAutoRotationRoomId(roomId) ||
       Boolean(
         roomId === AUTO_SELECT_GYNECOLOGY_ROOM_ID
@@ -263,14 +299,51 @@ export default function NewAppointmentScreen() {
     }
   };
 
-  const submit = () => {
+  const validateInlinePatient = () => {
+    const nextErrors: InlinePatientErrors = {};
+
+    if (inlinePatientName.trim().length < 3) {
+      nextErrors.name = "Nome deve ter pelo menos 3 caracteres.";
+    }
+
+    if (onlyDigits(inlinePatientCpf).length !== 11) {
+      nextErrors.cpf = "CPF deve conter 11 digitos.";
+    }
+
+    if (!inlinePatientBirthDate) {
+      nextErrors.birthDate = "Informe a data de nascimento.";
+    } else if (createLocalDate(inlinePatientBirthDate) > today) {
+      nextErrors.birthDate = "Data de nascimento nao pode ser futura.";
+    }
+
+    const phoneDigits = onlyDigits(inlinePatientPhone);
+    if (phoneDigits.length < 8 || phoneDigits.length > 11) {
+      nextErrors.phone = "Telefone deve ter entre 8 e 11 digitos.";
+    }
+
+    setInlinePatientErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const submit = async () => {
     if (!canSubmit) {
-      Alert.alert("Campos obrigatorios", "Preencha todos os campos obrigatorios antes de finalizar.");
+      Alert.alert("Campos obrigatorios", "Preencha data, horario, duracao, sala e paciente antes de finalizar.");
       return;
     }
 
     if (createLocalDate(date) < today) {
       Alert.alert("Data invalida", "Nao e permitido criar agendamento com data anterior a hoje.");
+      return;
+    }
+
+    if (canCreateWithInlinePatient && !patientId) {
+      if (!validateInlinePatient()) {
+        return;
+      }
+
+      const createdPatient = await createInlinePatient.mutateAsync();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.patients("") });
+      createAppointment.mutate({ overridePatientId: createdPatient.id });
       return;
     }
 
@@ -282,7 +355,7 @@ export default function NewAppointmentScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <Screen scroll={false}>
+      <Screen scroll={false} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.page}>
           <View style={styles.createHeaderRow}>
             <View style={styles.createHeaderLeft}>
@@ -305,40 +378,23 @@ export default function NewAppointmentScreen() {
               <View style={styles.form}>
             {createStep === 1 ? (
               <>
-                <Text style={styles.sectionTitle}>Tipo de consulta</Text>
-                <View style={styles.optionGrid}>
-                  {consultationTypes.map((type) => (
+                <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
+                <TextField label="Descricao (opcional)" value={description} onChangeText={setDescription} multiline />
+
+                <Text style={styles.sectionTitle}>Tempo da consulta</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRow}>
+                  {durationOptions.map((optionDuration) => (
                     <Pressable
-                      key={type.id}
+                      key={optionDuration}
                       onPress={() => {
-                        setDuration(Math.min(type.duration, 120));
-                        setTitle(`Consulta de ${type.name}`);
+                        setDuration(optionDuration);
                       }}
-                      style={[styles.option, duration === Math.min(type.duration, 120) && styles.optionActive]}
+                      style={[styles.timeChip, duration === optionDuration && styles.timeChipActive]}
                     >
-                      <Text style={[styles.optionTitle, duration === Math.min(type.duration, 120) && styles.optionTitleActive]}>{type.name}</Text>
-                      <Text style={styles.optionMeta}>{type.duration} min</Text>
+                      <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{optionDuration} min</Text>
                     </Pressable>
                   ))}
-                </View>
-
-                <View style={styles.switchRow}>
-                  <View style={styles.switchText}>
-                    <Text style={styles.sectionTitle}>Agendar sem paciente</Text>
-                    <Text style={styles.detail}>Ative esta opcao para criar um horario sem vincular paciente.</Text>
-                  </View>
-                  <Switch
-                    value={withoutPatient}
-                    onValueChange={(nextValue) => {
-                      setWithoutPatient(nextValue);
-                      if (nextValue) {
-                        setPatientId("");
-                      }
-                    }}
-                  />
-                </View>
-
-                {withoutPatient ? <Text style={styles.emptyHint}>Agendamento sera criado sem paciente vinculado.</Text> : null}
+                </ScrollView>
               </>
             ) : null}
 
@@ -449,7 +505,7 @@ export default function NewAppointmentScreen() {
                     {selectableRoomsForTime.map((room) => (
                       <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                         <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                        <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                        <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -459,20 +515,125 @@ export default function NewAppointmentScreen() {
 
             {createStep === 4 ? (
               <>
-                <TextField label="Titulo" value={title} onChangeText={setTitle} />
-                <TextField label="Descricao (opcional)" value={description} onChangeText={setDescription} multiline />
+                <View style={styles.switchRow}>
+                  <View style={styles.switchText}>
+                    <Text style={styles.sectionTitle}>Agendar sem paciente</Text>
+                    <Text style={styles.detail}>Ative esta opcao para criar um horario sem vincular paciente.</Text>
+                  </View>
+                  <Switch
+                    value={withoutPatient}
+                    onValueChange={(nextValue) => {
+                      setWithoutPatient(nextValue);
+                      if (nextValue) {
+                        setPatientId("");
+                        setShowInlinePatientForm(false);
+                        setInlinePatientErrors({});
+                      }
+                    }}
+                  />
+                </View>
 
                 {!withoutPatient ? (
                   <>
-                    <Text style={styles.sectionTitle}>Selecione o paciente</Text>
-                    <View style={styles.optionGrid}>
-                      {patients.map((patient) => (
-                        <Pressable key={patient.id} onPress={() => setPatientId(patient.id)} style={[styles.option, patientId === patient.id && styles.optionActive]}>
-                          <Text style={[styles.optionTitle, patientId === patient.id && styles.optionTitleActive]}>{patient.name}</Text>
-                          <Text style={styles.optionMeta}>{formatCpf(patient.cpf)}</Text>
-                        </Pressable>
-                      ))}
+                    <Text style={styles.sectionTitle}>{showInlinePatientForm ? "Novo paciente" : "Selecione o paciente"}</Text>
+
+                    {!showInlinePatientForm ? (
+                      <>
+                        {patientsQuery.isLoading ? <LoadingState label="Carregando pacientes..." /> : null}
+                        {!patientsQuery.isLoading && patients.length === 0 ? (
+                          <Text style={styles.emptyHint}>Nenhum paciente cadastrado. Use o botao abaixo para criar um novo paciente.</Text>
+                        ) : null}
+
+                        <View style={styles.optionGrid}>
+                          {patients.map((patient) => (
+                            <Pressable
+                              key={patient.id}
+                              onPress={() => {
+                                setPatientId(patient.id);
+                                setShowInlinePatientForm(false);
+                                setInlinePatientErrors({});
+                              }}
+                              style={[styles.option, patientId === patient.id && styles.optionActive]}
+                            >
+                              <Text style={[styles.optionTitle, patientId === patient.id && styles.optionTitleActive]}>{patient.name}</Text>
+                              <Text style={styles.optionMeta}>{formatCpf(patient.cpf)}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </>
+                    ) : null}
+
+                    <View style={styles.inlinePatientActions}>
+                      <Button
+                        title={showInlinePatientForm ? "Cancelar cadastro" : "Cadastrar novo paciente"}
+                        variant="secondary"
+                        onPress={() => {
+                          if (showInlinePatientForm) {
+                            setShowInlinePatientForm(false);
+                            setInlinePatientErrors({});
+                            return;
+                          }
+                          setPatientId("");
+                          setShowInlinePatientForm(true);
+                        }}
+                      />
                     </View>
+
+                    {showInlinePatientForm ? (
+                      <View style={styles.inlinePatientForm}>
+                        <Text style={styles.inlinePatientHint}>Os dados do paciente serao salvos automaticamente ao finalizar o agendamento.</Text>
+                        <TextField
+                          label="Nome completo"
+                          value={inlinePatientName}
+                          onChangeText={(value) => {
+                            setInlinePatientName(value);
+                            if (inlinePatientErrors.name) {
+                              setInlinePatientErrors((current) => ({ ...current, name: undefined }));
+                            }
+                          }}
+                          error={inlinePatientErrors.name}
+                        />
+                        <TextField
+                          label="CPF"
+                          keyboardType="number-pad"
+                          value={formatCpf(inlinePatientCpf)}
+                          onChangeText={(value) => {
+                            setInlinePatientCpf(formatCpf(value));
+                            if (inlinePatientErrors.cpf) {
+                              setInlinePatientErrors((current) => ({ ...current, cpf: undefined }));
+                            }
+                          }}
+                          error={inlinePatientErrors.cpf}
+                        />
+                        <DateTimeField
+                          label="Data de nascimento"
+                          mode="date"
+                          value={inlinePatientBirthDate}
+                          onChange={(value) => {
+                            setInlinePatientBirthDate(value);
+                            if (inlinePatientErrors.birthDate) {
+                              setInlinePatientErrors((current) => ({ ...current, birthDate: undefined }));
+                            }
+                          }}
+                          error={inlinePatientErrors.birthDate}
+                          maximumDate={today}
+                          defaultPickerDate={birthDateDefault}
+                          iosDateDisplay="spinner"
+                        />
+                        <TextField
+                          label="Telefone"
+                          keyboardType="phone-pad"
+                          value={formatPhone(inlinePatientPhone)}
+                          onChangeText={(value) => {
+                            setInlinePatientPhone(formatPhone(value));
+                            if (inlinePatientErrors.phone) {
+                              setInlinePatientErrors((current) => ({ ...current, phone: undefined }));
+                            }
+                          }}
+                          error={inlinePatientErrors.phone}
+                        />
+                      </View>
+                    ) : null}
                   </>
                 ) : (
                   <Text style={styles.emptyHint}>Agendamento sem paciente selecionado.</Text>
@@ -492,7 +653,7 @@ export default function NewAppointmentScreen() {
               title={createStep === 4 ? "Finalizar agendamento" : "Continuar"}
               onPress={createStep === 4 ? submit : goNextStep}
               disabled={createStep === 4 ? !canSubmit : !canGoNextStep}
-              loading={createAppointment.isPending}
+              loading={createAppointment.isPending || createInlinePatient.isPending}
               style={styles.createPrimaryButton}
             />
           </View>
@@ -631,6 +792,22 @@ const styles = StyleSheet.create({
   },
   switchText: {
     flex: 1,
+  },
+  inlinePatientActions: {
+    marginTop: 4,
+  },
+  inlinePatientForm: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    gap: 10,
+    backgroundColor: colors.surface,
+  },
+  inlinePatientHint: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
   },
   segment: {
     flexDirection: "row",

@@ -77,7 +77,7 @@ export default function NewPatientScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <Screen scroll={false}>
+      <Screen scroll={false} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.page}>
           <View style={styles.createHeaderRow}>
             <View style={styles.createHeaderLeft}>

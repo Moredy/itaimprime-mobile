@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { addMinutes, differenceInMinutes, format } from "date-fns";
+import { addMinutes, format } from "date-fns";
 import { useRouter } from "expo-router";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import React from "react";
@@ -17,8 +17,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { colors } from "@/theme/colors";
-import type { Appointment, AppointmentStatus, AvailableSlot, ConsultationType, Patient, Room } from "@/types/api";
-import { addMinutesToDate, createLocalDate, formatAppointmentRange, formatCpf, formatDateTime, formatTime, toDate } from "@/utils/format";
+import type { Appointment, AppointmentStatus, AvailableSlot, Patient, Room } from "@/types/api";
+import { addMinutesToDate, createLocalDate, formatAppointmentRange, formatCpf, formatDateTime, formatTime } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
 
 type FormMode = "create" | "edit";
@@ -81,6 +81,8 @@ const timeOptions = Array.from({ length: 40 }, (_, index) => {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
+const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
+
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
   monthNamesShort: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
@@ -102,7 +104,7 @@ export default function AppointmentsScreen() {
   const [status, setStatus] = React.useState<AppointmentStatus | undefined>("SCHEDULED");
   const [sideMenuOpen, setSideMenuOpen] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [formMode, setFormMode] = React.useState<FormMode>("create");
+  const [formMode] = React.useState<FormMode>("create");
   const [scheduleMode, setScheduleMode] = React.useState<ScheduleMode>("by-room");
   const [createStep, setCreateStep] = React.useState<CreateStep>(1);
   const [roomSelectionMode, setRoomSelectionMode] = React.useState<RoomSelectionMode>("rotative");
@@ -131,11 +133,6 @@ export default function AppointmentsScreen() {
   const patientsQuery = useQuery({
     queryKey: queryKeys.patients(""),
     queryFn: () => trpcClient.patient.list.query({}) as Promise<Patient[]>,
-  });
-
-  const consultationTypesQuery = useQuery({
-    queryKey: queryKeys.consultationTypes,
-    queryFn: () => trpcClient.settings.getConsultationTypes.query() as Promise<ConsultationType[]>,
   });
 
   const contractsQuery = useQuery({
@@ -180,7 +177,6 @@ export default function AppointmentsScreen() {
   const isNonGoldPlan = !contractsQuery.isLoading && !isGoldPlan;
   const canSelectRoom = !isNonGoldPlan;
   const isRoomLockedOnEdit = formMode === "edit" && isNonGoldPlan;
-  const shouldForceByTimeOnEdit = false;
   const shouldUseAutoRotationOnEdit = false;
   const shouldOfferAutoRotationOnEdit = formMode === "edit" && !isNonGoldPlan;
   const shouldFilterGynecologyRooms = isCreating && isGoldPlan && !isGynecologyDoctor;
@@ -270,7 +266,7 @@ export default function AppointmentsScreen() {
     mutationFn: () => {
       const startTime = createLocalDate(date, time);
       return trpcClient.appointment.createAppointment.mutate({
-        title: title.trim(),
+        title: title.trim() || "Consulta",
         description: description.trim() || undefined,
         startTime,
         endTime: addMinutesToDate(startTime, duration),
@@ -297,7 +293,7 @@ export default function AppointmentsScreen() {
 
       return trpcClient.appointment.updateAppointment.mutate({
         id: editingAppointment.id,
-        title: title.trim(),
+        title: title.trim() || "Consulta",
         description: description.trim() || undefined,
         startTime,
         endTime: addMinutesToDate(startTime, duration),
@@ -417,7 +413,7 @@ export default function AppointmentsScreen() {
 
   const canGoNextStep =
     (createStep === 1 && Boolean(withoutPatient || patientId)) ||
-    (createStep === 2 && Boolean(title.trim())) ||
+    (createStep === 2 && duration >= 30 && duration <= 120) ||
     (createStep === 3 && Boolean(date) && Boolean(time)) ||
     createStep === 4;
 
@@ -427,7 +423,7 @@ export default function AppointmentsScreen() {
         Alert.alert("Paciente", "Selecione um paciente ou marque a opcao de agendar sem paciente para continuar.");
       }
       if (createStep === 2) {
-        Alert.alert("Titulo obrigatorio", "Preencha o titulo para continuar.");
+        Alert.alert("Duracao obrigatoria", "Selecione o tempo da consulta para continuar.");
       }
       if (createStep === 3) {
         Alert.alert("Data e horario", "Selecione a data e o horario para continuar.");
@@ -447,7 +443,6 @@ export default function AppointmentsScreen() {
   };
 
   const canSubmit =
-    title.trim() &&
     date &&
     time &&
     duration >= 30 &&
@@ -459,7 +454,7 @@ export default function AppointmentsScreen() {
 
   const submit = () => {
     if (!canSubmit) {
-      Alert.alert("Campos obrigatorios", "Preencha titulo, data, horario, duracao, sala e paciente.");
+      Alert.alert("Campos obrigatorios", "Preencha data, horario, duracao, sala e paciente.");
       return;
     }
     if (shouldUseAutoRotationOnEdit && needsAutoRoomRevalidation) {
@@ -504,7 +499,6 @@ export default function AppointmentsScreen() {
 
   const appointments = appointmentsQuery.data ?? [];
   const patients = patientsQuery.data ?? [];
-  const consultationTypes = consultationTypesQuery.data ?? [];
   const selectedPatient = patients.find((patient) => patient.id === patientId);
   const createProgress = (createStep / 4) * 100;
   const showTopCreateButton = !appointmentsQuery.isLoading && appointments.length > 0;
@@ -516,8 +510,6 @@ export default function AppointmentsScreen() {
       | "/(tabs)/patients"
       | "/(tabs)/plan"
       | "/(tabs)/preferences"
-      | "/(tabs)/consultation-types"
-      | "/(tabs)/working-hours"
       | "/(tabs)/settings",
   ) => {
     setSideMenuOpen(false);
@@ -539,22 +531,10 @@ export default function AppointmentsScreen() {
                 <Text style={styles.sideMenuItemText}>Perfil</Text>
               </View>
             </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/consultation-types")}>
-              <View style={styles.sideMenuItemContent}>
-                <Ionicons name="document-text-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Tipos de consulta</Text>
-              </View>
-            </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/working-hours")}>
-              <View style={styles.sideMenuItemContent}>
-                <Ionicons name="time-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Horarios de atendimento</Text>
-              </View>
-            </Pressable>
             <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/preferences")}>
               <View style={styles.sideMenuItemContent}>
                 <Ionicons name="options-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Preferencias</Text>
+                <Text style={styles.sideMenuItemText}>Configurações</Text>
               </View>
             </Pressable>
           </View>
@@ -602,7 +582,7 @@ export default function AppointmentsScreen() {
                 </View>
                 <Text style={styles.detail}>{formatAppointmentRange(appointment.startTime, appointment.endTime)}</Text>
                 <Text style={styles.detail}>Sala {appointment.room?.name ?? appointment.roomId}</Text>
-                <Text style={styles.detail}>Paciente {appointment.patient?.name ?? "Sem paciente"}</Text>
+                <Text style={styles.detail}>{appointment.patient?.name ? `Paciente ${appointment.patient.name}` : "Sem paciente"}</Text>
                 {appointment.conexaCheckInAt ? <Text style={styles.detail}>Check-in em {formatDateTime(appointment.conexaCheckInAt)}</Text> : null}
                 {appointment.conexaCheckInError ? <Text style={styles.error}>Erro Conexa: {appointment.conexaCheckInError}</Text> : null}
               </Card>
@@ -612,7 +592,7 @@ export default function AppointmentsScreen() {
       </ScrollView>
 
       <Modal visible={modalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeModal}>
-        <Screen>
+        <Screen edges={["top", "left", "right", "bottom"]}>
           {isCreating ? (
             <>
               <View style={styles.createHeaderRow}>
@@ -692,14 +672,14 @@ export default function AppointmentsScreen() {
 
                   {createStep === 2 ? (
                     <>
-                      <TextField label="Titulo" value={title} onChangeText={setTitle} />
+                      <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
                       <TextField label="Descricao" value={description} onChangeText={setDescription} multiline />
-                      <Text style={styles.sectionTitle}>Tipo de consulta</Text>
+                      <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                       <View style={styles.optionGrid}>
-                        {consultationTypes.map((type) => (
-                          <Pressable key={type.id} onPress={() => setDuration(Math.min(type.duration, 120))} style={[styles.option, duration === Math.min(type.duration, 120) && styles.optionActive]}>
-                            <Text style={[styles.optionTitle, duration === Math.min(type.duration, 120) && styles.optionTitleActive]}>{type.name}</Text>
-                            <Text style={styles.optionMeta}>{type.duration} min</Text>
+                        {durationOptions.map((optionDuration) => (
+                          <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
+                            <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration} min</Text>
+                            <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                           </Pressable>
                         ))}
                       </View>
@@ -841,7 +821,7 @@ export default function AppointmentsScreen() {
                               {selectableRoomsForTime.map((room) => (
                                 <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                                   <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                                  <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                                  <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                                 </Pressable>
                               ))}
                             </View>
@@ -865,7 +845,7 @@ export default function AppointmentsScreen() {
                 </>
               ) : (
                 <>
-                  <TextField label="Titulo" value={title} onChangeText={setTitle} />
+                  <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
                   <TextField label="Descricao" value={description} onChangeText={setDescription} multiline />
                   <DateTimeField
                     label="Data"
@@ -903,12 +883,12 @@ export default function AppointmentsScreen() {
                     </View>
                   ) : null}
 
-                  <Text style={styles.sectionTitle}>Tipo de consulta</Text>
+                  <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                   <View style={styles.optionGrid}>
-                    {consultationTypes.map((type) => (
-                      <Pressable key={type.id} onPress={() => setDuration(Math.min(type.duration, 120))} style={[styles.option, duration === Math.min(type.duration, 120) && styles.optionActive]}>
-                        <Text style={[styles.optionTitle, duration === Math.min(type.duration, 120) && styles.optionTitleActive]}>{type.name}</Text>
-                        <Text style={styles.optionMeta}>{type.duration} min</Text>
+                    {durationOptions.map((optionDuration) => (
+                      <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
+                        <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration} min</Text>
+                        <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -921,7 +901,7 @@ export default function AppointmentsScreen() {
                           roomId ? (
                             <Pressable style={[styles.option, styles.optionActive]}>
                               <Text style={[styles.optionTitle, styles.optionTitleActive]}>{selectedRoomForLockedEdit?.name ?? `Sala ${roomId}`}</Text>
-                              <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.specialties?.join(", ") || "Sala bloqueada para edicao"}</Text>
+                              <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.description?.trim() || "Sala bloqueada para edicao"}</Text>
                             </Pressable>
                           ) : (
                             <Text style={styles.emptyHint}>Nenhuma sala selecionada para esta consulta.</Text>
@@ -930,7 +910,7 @@ export default function AppointmentsScreen() {
                           selectableRooms.map((room) => (
                             <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                               <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                              <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                              <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                             </Pressable>
                           ))
                         )}
@@ -1021,7 +1001,7 @@ export default function AppointmentsScreen() {
                           {selectableRoomsForTime.map((room) => (
                             <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                               <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                              <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                              <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                             </Pressable>
                           ))}
                         </View>

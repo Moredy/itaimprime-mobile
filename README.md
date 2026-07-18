@@ -111,7 +111,7 @@ Antes da publicacao, configure icones/splash definitivos, bundle id/package defi
 - Disponibilidade por sala com `appointment.getAvailableSlots`.
 - Disponibilidade por horario com `appointment.getAvailableRoomsForTime`.
 - Status de check-in Conexa exibido a partir do retorno do backend.
-- Ajustes do medico: antecedencia minima, especialidade, tipos de consulta e horarios de atendimento.
+- Ajustes do medico: especialidade.
 
 ## Validacao tecnica
 

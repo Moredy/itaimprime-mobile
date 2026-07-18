@@ -1,19 +1,21 @@
 import { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Edge, SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 
 export function Screen({
   children,
   scroll = true,
+  edges = ["top", "left", "right"],
 }: {
   children: ReactNode;
   scroll?: boolean;
+  edges?: Edge[];
 }) {
   const content = <View style={styles.content}>{children}</View>;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={edges}>
       <KeyboardAvoidingView
         style={styles.keyboard}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

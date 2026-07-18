@@ -14,7 +14,7 @@ import { TextField } from "@/components/TextField";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { colors } from "@/theme/colors";
-import type { Appointment, AvailableSlot, ConsultationType, Patient, Room } from "@/types/api";
+import type { Appointment, AvailableSlot, Patient, Room } from "@/types/api";
 import { addMinutesToDate, createLocalDate, formatCpf, formatTime, toDate } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
 
@@ -65,6 +65,8 @@ const timeOptions = Array.from({ length: 40 }, (_, index) => {
   const minute = (index * 15) % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
+
+const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
 
 export default function EditAppointmentScreen() {
   const router = useRouter();
@@ -122,11 +124,6 @@ export default function EditAppointmentScreen() {
     queryFn: () => trpcClient.patient.list.query({}) as Promise<Patient[]>,
   });
 
-  const consultationTypesQuery = useQuery({
-    queryKey: queryKeys.consultationTypes,
-    queryFn: () => trpcClient.settings.getConsultationTypes.query() as Promise<ConsultationType[]>,
-  });
-
   const contractsQuery = useQuery({
     queryKey: queryKeys.contracts(20, 0),
     queryFn: () =>
@@ -163,7 +160,6 @@ export default function EditAppointmentScreen() {
   const rooms = roomsQuery.data ?? [];
   const roomsForTime = roomsForTimeQuery.data ?? [];
   const patients = patientsQuery.data ?? [];
-  const consultationTypes = consultationTypesQuery.data ?? [];
 
   const isGoldPlan = React.useMemo(() => hasGoldPlan(contractsQuery.data?.data), [contractsQuery.data?.data]);
   const isNonGoldPlan = !contractsQuery.isLoading && !isGoldPlan;
@@ -214,7 +210,7 @@ export default function EditAppointmentScreen() {
 
       return trpcClient.appointment.updateAppointment.mutate({
         id: editingAppointment.id,
-        title: title.trim(),
+        title: title.trim() || "Consulta",
         description: description.trim() || undefined,
         startTime,
         endTime: addMinutesToDate(startTime, duration),
@@ -254,7 +250,6 @@ export default function EditAppointmentScreen() {
   };
 
   const canSubmit =
-    title.trim() &&
     date &&
     time &&
     duration >= 30 &&
@@ -270,7 +265,7 @@ export default function EditAppointmentScreen() {
     }
 
     if (!canSubmit) {
-      Alert.alert("Campos obrigatorios", "Preencha titulo, data, horario, duracao, sala e paciente.");
+      Alert.alert("Campos obrigatorios", "Preencha data, horario, duracao, sala e paciente.");
       return;
     }
 
@@ -298,7 +293,7 @@ export default function EditAppointmentScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <Screen scroll={false}>
+      <Screen scroll={false} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.page}>
           <View style={styles.createHeaderRow}>
             <View style={styles.createHeaderLeft}>
@@ -335,7 +330,7 @@ export default function EditAppointmentScreen() {
               <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
                 <Card>
                   <View style={styles.form}>
-              <TextField label="Titulo" value={title} onChangeText={setTitle} />
+              <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
               <TextField label="Descricao" value={description} onChangeText={setDescription} multiline />
 
               <DateTimeField label="Data" mode="date" value={date} onChange={setDate} />
@@ -363,19 +358,18 @@ export default function EditAppointmentScreen() {
                 </View>
               ) : null}
 
-              <Text style={styles.sectionTitle}>Tipo de consulta</Text>
-              <View style={styles.optionGrid}>
-                {consultationTypes.map((type) => (
+              <Text style={styles.sectionTitle}>Tempo da consulta</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRow}>
+                {durationOptions.map((optionDuration) => (
                   <Pressable
-                    key={type.id}
-                    onPress={() => setDuration(Math.min(type.duration, 120))}
-                    style={[styles.option, duration === Math.min(type.duration, 120) && styles.optionActive]}
+                    key={optionDuration}
+                    onPress={() => setDuration(optionDuration)}
+                    style={[styles.timeChip, duration === optionDuration && styles.timeChipActive]}
                   >
-                    <Text style={[styles.optionTitle, duration === Math.min(type.duration, 120) && styles.optionTitleActive]}>{type.name}</Text>
-                    <Text style={styles.optionMeta}>{type.duration} min</Text>
+                    <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{optionDuration} min</Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
 
               {scheduleMode === "by-room" ? (
                 <>
@@ -385,7 +379,7 @@ export default function EditAppointmentScreen() {
                       roomId ? (
                         <Pressable style={[styles.option, styles.optionActive]}>
                           <Text style={[styles.optionTitle, styles.optionTitleActive]}>{selectedRoomForLockedEdit?.name ?? `Sala ${roomId}`}</Text>
-                          <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.specialties?.join(", ") || "Sala bloqueada para edicao"}</Text>
+                          <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.description?.trim() || "Sala bloqueada para edicao"}</Text>
                         </Pressable>
                       ) : (
                         <Text style={styles.emptyHint}>Nenhuma sala selecionada para esta consulta.</Text>
@@ -394,7 +388,7 @@ export default function EditAppointmentScreen() {
                       rooms.map((room) => (
                         <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                           <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                          <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                          <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                         </Pressable>
                       ))
                     )}
@@ -456,7 +450,7 @@ export default function EditAppointmentScreen() {
                     {roomsForTime.map((room) => (
                       <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
                         <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                        <Text style={styles.optionMeta}>{room.specialties?.join(", ") || "Sem especialidade"}</Text>
+                        <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -644,6 +638,33 @@ const styles = StyleSheet.create({
   optionMeta: {
     color: colors.muted,
     fontSize: 12,
+  },
+  timeRow: {
+    gap: 10,
+    paddingRight: 8,
+  },
+  timeChip: {
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    minWidth: 84,
+    minHeight: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  timeChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: "#FCE9F1",
+  },
+  timeChipText: {
+    color: "#2B2B2B",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  timeChipTextActive: {
+    color: colors.primary,
   },
   switchRow: {
     flexDirection: "row",

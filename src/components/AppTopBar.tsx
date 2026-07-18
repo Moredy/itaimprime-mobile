@@ -10,8 +10,6 @@ type MenuPath =
   | "/(tabs)/patients"
   | "/(tabs)/plan"
   | "/(tabs)/preferences"
-  | "/(tabs)/consultation-types"
-  | "/(tabs)/working-hours"
   | "/(tabs)/settings";
 
 export function AppTopBar() {
@@ -38,22 +36,10 @@ export function AppTopBar() {
                 <Text style={styles.sideMenuItemText}>Perfil</Text>
               </View>
             </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/consultation-types")}>
-              <View style={styles.sideMenuItemContent}>
-                <Ionicons name="document-text-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Tipos de consulta</Text>
-              </View>
-            </Pressable>
-            <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/working-hours")}>
-              <View style={styles.sideMenuItemContent}>
-                <Ionicons name="time-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Horarios de atendimento</Text>
-              </View>
-            </Pressable>
             <Pressable style={styles.sideMenuItem} onPress={() => navigateFromSideMenu("/(tabs)/preferences")}>
               <View style={styles.sideMenuItemContent}>
                 <Ionicons name="options-outline" size={18} color={colors.primaryLight} />
-                <Text style={styles.sideMenuItemText}>Preferencias</Text>
+                <Text style={styles.sideMenuItemText}>Configurações</Text>
               </View>
             </Pressable>
           </View>

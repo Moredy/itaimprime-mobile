@@ -28,7 +28,6 @@
 - Criar agendamento sem paciente quando permitido.
 - Tentar criar conflito de sala e confirmar bloqueio.
 - Tentar criar conflito de medico em salas diferentes e confirmar bloqueio.
-- Tentar agendar fora da antecedencia minima.
 - Tentar agendar fora do horario da clinica ou do medico.
 - Editar data, horario, sala, titulo, descricao e paciente.
 - Cancelar agendamento.
@@ -36,10 +35,7 @@
 
 ## Ajustes do medico
 
-- Atualizar antecedencia minima.
 - Atualizar especialidade.
-- Criar e remover tipo de consulta.
-- Alterar horarios de atendimento e testar reflexo na disponibilidade.
 
 ## Publicacao
 
