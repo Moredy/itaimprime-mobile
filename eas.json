@@ -24,6 +24,7 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "env": {
         "APP_ENV": "prod",
         "EXPO_PUBLIC_API_URL": "https://agendamento-medico-app.3uwncj.easypanel.host",
