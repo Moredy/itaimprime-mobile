@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, Pressable, StyleSheet, Text } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { AppTopBar } from "@/components/AppTopBar";
 import { Card } from "@/components/Card";
 import { Screen } from "@/components/Screen";
@@ -56,7 +56,8 @@ export default function PreferencesScreen() {
 
       <Card>
         <Text style={styles.sectionTitle}>Configurações</Text>
-        <Text style={styles.detail}>No momento, nao ha configurações adicionais disponiveis no aplicativo.</Text>
+        <Text style={styles.detail}>No momento, não há configurações adicionais disponíveis no aplicativo.</Text>
+        <View style={styles.sectionDivider} />
 
         <Text style={styles.deleteTitle}>Zona de risco</Text>
         <Text style={styles.deleteDescription}>
@@ -82,6 +83,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  sectionDivider: {
+    height: 1,
+    width: "100%",
+    backgroundColor: colors.border,
+    marginTop: 8,
+    marginBottom: 8,
   },
   deleteTitle: {
     marginTop: 8,

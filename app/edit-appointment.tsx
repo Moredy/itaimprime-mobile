@@ -330,181 +330,147 @@ export default function EditAppointmentScreen() {
               <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
                 <Card>
                   <View style={styles.form}>
-              <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
-              <TextField label="Descricao" value={description} onChangeText={setDescription} multiline />
 
-              <DateTimeField label="Data" mode="date" value={date} onChange={setDate} />
+                    <DateTimeField label="Data" mode="date" value={date} onChange={setDate} />
 
-              <View style={styles.segment}>
-                <Button
-                  title="Por sala"
-                  variant={scheduleMode === "by-room" ? "primary" : "secondary"}
-                  onPress={() => setMode("by-room")}
-                  style={styles.segmentButton}
-                />
-                <Button
-                  title="Por horario"
-                  variant={scheduleMode === "by-time" ? "primary" : "secondary"}
-                  onPress={() => setMode("by-time")}
-                  style={styles.segmentButton}
-                  disabled={isRoomLockedOnEdit}
-                />
-              </View>
+                    <View style={styles.segment}>
+                      <Button
+                        title="Por sala"
+                        variant={scheduleMode === "by-room" ? "primary" : "secondary"}
+                        onPress={() => setMode("by-room")}
+                        style={styles.segmentButton}
+                      />
+                      <Button
+                        title="Por horario"
+                        variant={scheduleMode === "by-time" ? "primary" : "secondary"}
+                        onPress={() => setMode("by-time")}
+                        style={styles.segmentButton}
+                        disabled={isRoomLockedOnEdit}
+                      />
+                    </View>
 
-              {isRoomLockedOnEdit ? (
-                <View style={styles.planHint}>
-                  <Text style={styles.planHintTitle}>Sem plano (edicao)</Text>
-                  <Text style={styles.planHintText}>A sala atual permanece bloqueada. Voce pode editar os demais campos da consulta.</Text>
-                </View>
-              ) : null}
 
-              <Text style={styles.sectionTitle}>Tempo da consulta</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRow}>
-                {durationOptions.map((optionDuration) => (
-                  <Pressable
-                    key={optionDuration}
-                    onPress={() => setDuration(optionDuration)}
-                    style={[styles.timeChip, duration === optionDuration && styles.timeChipActive]}
-                  >
-                    <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{optionDuration} min</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
 
-              {scheduleMode === "by-room" ? (
-                <>
-                  <Text style={styles.sectionTitle}>Sala</Text>
-                  <View style={styles.optionGrid}>
-                    {isRoomLockedOnEdit ? (
-                      roomId ? (
-                        <Pressable style={[styles.option, styles.optionActive]}>
-                          <Text style={[styles.optionTitle, styles.optionTitleActive]}>{selectedRoomForLockedEdit?.name ?? `Sala ${roomId}`}</Text>
-                          <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.description?.trim() || "Sala bloqueada para edicao"}</Text>
-                        </Pressable>
-                      ) : (
-                        <Text style={styles.emptyHint}>Nenhuma sala selecionada para esta consulta.</Text>
-                      )
+
+                    {scheduleMode === "by-room" ? (
+                      <>
+                        <Text style={styles.sectionTitle}>Sala</Text>
+                        <View style={styles.optionGrid}>
+                          {isRoomLockedOnEdit ? (
+                            roomId ? (
+                              <Pressable style={[styles.option, styles.optionActive]}>
+                                <Text style={[styles.optionTitle, styles.optionTitleActive]}>{selectedRoomForLockedEdit?.name ?? `Sala ${roomId}`}</Text>
+                                <Text style={styles.optionMeta}>{selectedRoomForLockedEdit?.description?.trim() || "Sala bloqueada para edicao"}</Text>
+                              </Pressable>
+                            ) : (
+                              <Text style={styles.emptyHint}>Nenhuma sala selecionada para esta consulta.</Text>
+                            )
+                          ) : (
+                            rooms.map((room) => (
+                              <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
+                                <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
+                                <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
+                              </Pressable>
+                            ))
+                          )}
+                        </View>
+
+                        {roomId ? (
+                          <>
+                            {!slotsQuery.isFetching && (slotsQuery.data ?? []).length === 0 ? (
+                              <Text style={styles.sectionTitle}>Horários disponíveis</Text>) : null}
+                            {slotsQuery.isFetching ? <LoadingState label="Buscando horários..." /> : null}
+                            {!slotsQuery.isFetching && (slotsQuery.data ?? []).length === 0 ? (
+                              <Text style={styles.emptyHint}>Não há horários disponíveis para esta data e sala.</Text>
+                            ) : null}
+                            {!slotsQuery.isFetching && (slotsQuery.data ?? []).length > 0 ? (
+                              <SelectField
+                                label="Horários disponíveis"
+                                value={time}
+                                onValueChange={setTime}
+                                placeholder="Selecione um horário"
+                                options={(slotsQuery.data ?? []).map((slot) => {
+                                  const start = formatTime(slot.startTime);
+                                  return {
+                                    label: slot.formatted || start,
+                                    value: start,
+                                  };
+                                })}
+                              />
+                            ) : null}
+                          </>
+                        ) : null}
+                      </>
                     ) : (
-                      rooms.map((room) => (
-                        <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
-                          <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                          <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
-                        </Pressable>
-                      ))
-                    )}
-                  </View>
-
-                  {roomId ? (
-                    <>
-                      <Text style={styles.sectionTitle}>Horarios disponiveis</Text>
-                      {slotsQuery.isFetching ? <LoadingState label="Buscando horarios..." /> : null}
-                      {!slotsQuery.isFetching && (slotsQuery.data ?? []).length === 0 ? (
-                        <Text style={styles.emptyHint}>Nao ha horarios disponiveis para esta data e sala.</Text>
-                      ) : null}
-                      {!slotsQuery.isFetching && (slotsQuery.data ?? []).length > 0 ? (
+                      <>
                         <SelectField
                           label="Horario"
                           value={time}
-                          onValueChange={setTime}
+                          onValueChange={(selectedTime) => {
+                            setTime(selectedTime);
+                            if (!isRoomLockedOnEdit) {
+                              setRoomId("");
+                            }
+                          }}
                           placeholder="Selecione um horario"
-                          options={(slotsQuery.data ?? []).map((slot) => {
-                            const start = formatTime(slot.startTime);
-                            return {
-                              label: slot.formatted || start,
-                              value: start,
-                            };
-                          })}
+                          options={timeOptions.map((item) => ({ label: item, value: item }))}
                         />
-                      ) : null}
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <SelectField
-                    label="Horario"
-                    value={time}
-                    onValueChange={(selectedTime) => {
-                      setTime(selectedTime);
-                      if (!isRoomLockedOnEdit) {
-                        setRoomId("");
-                      }
-                    }}
-                    placeholder="Selecione um horario"
-                    options={timeOptions.map((item) => ({ label: item, value: item }))}
-                  />
 
-                  <Text style={styles.sectionTitle}>Salas disponiveis</Text>
-                  {roomsForTimeQuery.isFetching ? <LoadingState label="Buscando salas..." /> : null}
+                        <Text style={styles.sectionTitle}>Salas disponiveis</Text>
+                        {roomsForTimeQuery.isFetching ? <LoadingState label="Buscando salas..." /> : null}
 
-                  {shouldShowAutoRotationSelection ? (
-                    <View style={styles.optionGrid}>
-                      <Pressable onPress={() => chooseAutoRoom(AUTO_SELECT_ROOM_ID)} style={[styles.option, roomId === AUTO_SELECT_ROOM_ID && styles.optionActive]}>
-                        <Text style={[styles.optionTitle, roomId === AUTO_SELECT_ROOM_ID && styles.optionTitleActive]}>Rotativo de sala comum</Text>
-                        <Text style={styles.optionMeta}>Usa salas convencionais no horario selecionado.</Text>
+                        {shouldShowAutoRotationSelection ? (
+                          <View style={styles.optionGrid}>
+                            <Pressable onPress={() => chooseAutoRoom(AUTO_SELECT_ROOM_ID)} style={[styles.option, roomId === AUTO_SELECT_ROOM_ID && styles.optionActive]}>
+                              <Text style={[styles.optionTitle, roomId === AUTO_SELECT_ROOM_ID && styles.optionTitleActive]}>Rotativo de sala comum</Text>
+                              <Text style={styles.optionMeta}>Usa salas convencionais no horario selecionado.</Text>
+                            </Pressable>
+                          </View>
+                        ) : null}
+
+                        <View style={styles.optionGrid}>
+                          {roomsForTime.map((room) => (
+                            <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
+                              <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
+                              <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </>
+                    )}
+
+
+                    <SelectField
+                      label="Tempo da consulta"
+                      value={String(duration)}
+                      onValueChange={(selectedDuration) => {
+                        const parsedDuration = Number(selectedDuration);
+                        if (Number.isNaN(parsedDuration)) {
+                          return;
+                        }
+
+                        setDuration(parsedDuration);
+                      }}
+                      placeholder="Selecione a duracao"
+                      options={durationOptions.map((optionDuration) => ({
+                        label: `${optionDuration} min`,
+                        value: String(optionDuration),
+                      }))}
+                    />
+
+                    {selectedPatient ? <Text style={styles.detail}>Paciente selecionado: {selectedPatient.name}</Text> : null}
+                    <View style={styles.sectionDivider} />
+                    <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
+                    <TextField label="Descrição (opcional)" value={description} onChangeText={setDescription} multiline />
+                    <View style={styles.sectionDivider} />
+                    {editingAppointment.status !== "CANCELED" ? (
+                      <Pressable onPress={confirmCancel} disabled={cancelAppointment.isPending} style={styles.cancelTextAction}>
+
+                        <Text style={[styles.cancelText, cancelAppointment.isPending && styles.cancelTextDisabled]}>
+                          {cancelAppointment.isPending ? "Cancelando..." : "Cancelar agendamento"}
+                        </Text>
                       </Pressable>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.optionGrid}>
-                    {roomsForTime.map((room) => (
-                      <Pressable key={room.id} onPress={() => setRoomId(room.id)} style={[styles.option, roomId === room.id && styles.optionActive]}>
-                        <Text style={[styles.optionTitle, roomId === room.id && styles.optionTitleActive]}>{room.name}</Text>
-                        <Text style={styles.optionMeta}>{room.description?.trim() || "Sem descricao"}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              <View style={styles.switchRow}>
-                <View style={styles.switchText}>
-                  <Text style={styles.sectionTitle}>Agendar sem paciente</Text>
-                  <Text style={styles.detail}>Use somente quando o backend permitir esse fluxo.</Text>
-                </View>
-                <Switch
-                  value={withoutPatient}
-                  onValueChange={(nextValue) => {
-                    setWithoutPatient(nextValue);
-                    if (nextValue) {
-                      setPatientId("");
-                    }
-                  }}
-                />
-              </View>
-
-              {!withoutPatient ? (
-                <>
-                  <Text style={styles.sectionTitle}>Paciente</Text>
-                  {patientsQuery.isLoading ? <LoadingState label="Carregando pacientes..." /> : null}
-                  {patientsQuery.isError ? <Text style={styles.emptyHint}>Nao foi possivel carregar os pacientes. Tente novamente.</Text> : null}
-                  {!patientsQuery.isLoading && !patientsQuery.isError && patients.length === 0 ? (
-                    <Text style={styles.emptyHint}>Nenhum paciente cadastrado. Cadastre um paciente na aba Pacientes para concluir o agendamento.</Text>
-                  ) : null}
-                  {!patientsQuery.isLoading && !patientsQuery.isError && patients.length > 0 ? (
-                    <View style={styles.optionGrid}>
-                      {patients.map((patient) => (
-                        <Pressable key={patient.id} onPress={() => setPatientId(patient.id)} style={[styles.option, patientId === patient.id && styles.optionActive]}>
-                          <Text style={[styles.optionTitle, patientId === patient.id && styles.optionTitleActive]}>{patient.name}</Text>
-                          <Text style={styles.optionMeta}>{formatCpf(patient.cpf)}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
-                </>
-              ) : (
-                <Text style={styles.emptyHint}>Agendamento sera mantido sem paciente.</Text>
-              )}
-
-              {selectedPatient ? <Text style={styles.detail}>Paciente selecionado: {selectedPatient.name}</Text> : null}
-
-              {editingAppointment.status !== "CANCELED" ? (
-                <Pressable onPress={confirmCancel} disabled={cancelAppointment.isPending} style={styles.cancelTextAction}>
-                  <Text style={[styles.cancelText, cancelAppointment.isPending && styles.cancelTextDisabled]}>
-                    {cancelAppointment.isPending ? "Cancelando..." : "Cancelar agendamento"}
-                  </Text>
-                </Pressable>
-              ) : null}
+                    ) : null}
 
                   </View>
                 </Card>
@@ -639,32 +605,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
   },
-  timeRow: {
-    gap: 10,
-    paddingRight: 8,
-  },
-  timeChip: {
-    borderWidth: 1,
-    borderColor: "#1A1A1A",
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    minWidth: 84,
-    minHeight: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  timeChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: "#FCE9F1",
-  },
-  timeChipText: {
-    color: "#2B2B2B",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  timeChipTextActive: {
-    color: colors.primary,
+  sectionDivider: {
+    height: 1,
+    width: "100%",
+    backgroundColor: colors.border,
+    marginTop: 8,
+    marginBottom: 4,
   },
   switchRow: {
     flexDirection: "row",
@@ -676,12 +622,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cancelTextAction: {
-    alignSelf: "center",
+    alignSelf: "flex-start",
+
     paddingVertical: 6,
   },
   cancelText: {
     color: colors.danger,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     textDecorationLine: "underline",
   },

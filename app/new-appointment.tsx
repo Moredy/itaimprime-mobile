@@ -379,7 +379,7 @@ export default function NewAppointmentScreen() {
             {createStep === 1 ? (
               <>
                 <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
-                <TextField label="Descricao (opcional)" value={description} onChangeText={setDescription} multiline />
+                <TextField label="Descrição (opcional)" value={description} onChangeText={setDescription} multiline />
 
                 <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRow}>
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   },
   timeChipActive: {
     borderColor: colors.primary,
-    backgroundColor: "#FCE9F1",
+    backgroundColor: "#e9effc",
   },
   timeChipText: {
     color: "#2B2B2B",

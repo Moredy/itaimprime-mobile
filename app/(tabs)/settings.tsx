@@ -13,6 +13,19 @@ import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
 import { getErrorMessage } from "@/utils/errors";
 
+const formatNameToTitleCase = (value?: string | null) => {
+  const trimmedValue = value?.trim();
+  if (!trimmedValue) {
+    return "Medico";
+  }
+
+  return trimmedValue
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const { user, refreshSession, signOut } = useAuth();
@@ -62,7 +75,7 @@ export default function SettingsScreen() {
 
       <Card>
         <Text style={styles.title}>Perfil</Text>
-        <Text style={styles.detail}>Usuario: {user?.name ?? "Medico"}</Text>
+        <Text style={styles.detail}>Nome: {formatNameToTitleCase(user?.name)}</Text>
         <Text style={styles.detail}>Email: {user?.email ?? "-"}</Text>
 
         {specialtyOptionsQuery.isLoading ? <LoadingState label="Carregando especialidades..." /> : null}
