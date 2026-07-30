@@ -13,6 +13,7 @@ import { Screen } from "@/components/Screen";
 import { SelectField } from "@/components/SelectField";
 import { EmptyState, LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
+import { useAppointmentRealtime } from "@/hooks/useAppointmentRealtime";
 import { useAuth } from "@/providers/AuthProvider";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
@@ -75,6 +76,64 @@ const statusOptions: { label: string; value?: AppointmentStatus }[] = [
 
 const isAppointmentEditable = (appointment: Appointment) => appointment.status === "SCHEDULED";
 
+type AppointmentDisplayState = "agendado" | "processando" | "em-atendimento" | "concluido" | "cancelado" | "falha-checkin";
+
+type AppointmentDisplay = {
+  label: string;
+  state: AppointmentDisplayState;
+};
+
+const hasAppointmentStarted = (appointment: Appointment, now: Date) => new Date(appointment.startTime).getTime() <= now.getTime();
+
+const getAppointmentDisplayStatus = (appointment: Appointment, now: Date): AppointmentDisplay => {
+  if (appointment.status === "CANCELED") {
+    return {
+      label: "Cancelada",
+      state: "cancelado",
+    };
+  }
+
+  if (appointment.status === "COMPLETED") {
+    return {
+      label: "Concluida",
+      state: "concluido",
+    };
+  }
+
+  if (appointment.conexaCheckInStatus === "FAILED") {
+    return {
+      label: "Falha no check-in",
+      state: "falha-checkin",
+    };
+  }
+
+  if (appointment.status === "SCHEDULED") {
+    if (appointment.conexaCheckInStatus === "COMPLETED" && hasAppointmentStarted(appointment, now)) {
+      return {
+        label: "Em atendimento",
+        state: "em-atendimento",
+      };
+    }
+
+    if (hasAppointmentStarted(appointment, now)) {
+      return {
+        label: "Processando...",
+        state: "processando",
+      };
+    }
+
+    return {
+      label: "Agendada",
+      state: "agendado",
+    };
+  }
+
+  return {
+    label: "Agendada",
+    state: "agendado",
+  };
+};
+
 const timeOptions = Array.from({ length: 40 }, (_, index) => {
   const hour = 8 + Math.floor((index * 15) / 60);
   const minute = (index * 15) % 60;
@@ -95,7 +154,8 @@ LocaleConfig.defaultLocale = "pt-br";
 export default function AppointmentsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
+  useAppointmentRealtime(authStatus === "authenticated");
   const today = React.useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -119,6 +179,8 @@ export default function AppointmentsScreen() {
   const [patientId, setPatientId] = React.useState("");
   const [withoutPatient, setWithoutPatient] = React.useState(false);
   const [needsAutoRoomRevalidation, setNeedsAutoRoomRevalidation] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(() => new Date());
+  const [checkoutingAppointmentId, setCheckoutingAppointmentId] = React.useState<string | null>(null);
 
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.appointments(status),
@@ -226,6 +288,14 @@ export default function AppointmentsScreen() {
   }, [canSelectRoom, isCreating, scheduleMode]);
 
   React.useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  React.useEffect(() => {
     if (isRoomLockedOnEdit && scheduleMode !== "by-room") {
       setScheduleMode("by-room");
     }
@@ -317,6 +387,19 @@ export default function AppointmentsScreen() {
     onError: (error) => Alert.alert("Erro ao cancelar", getErrorMessage(error)),
   });
 
+  const checkoutAppointment = useMutation({
+    mutationFn: (id: string) => trpcClient.appointment.checkoutAppointment.mutate({ id }),
+    onSuccess: () => {
+      setCheckoutingAppointmentId(null);
+      void invalidateAppointments();
+      Alert.alert("Checkout realizado", "A consulta foi finalizada com sucesso.");
+    },
+    onError: (error) => {
+      setCheckoutingAppointmentId(null);
+      Alert.alert("Erro ao realizar checkout", getErrorMessage(error));
+    },
+  });
+
   const resetForm = () => {
     setTitle("Consulta");
     setDescription("");
@@ -351,6 +434,45 @@ export default function AppointmentsScreen() {
       pathname: "/edit-appointment",
       params: { appointmentId: appointment.id },
     });
+  };
+
+  const canEditAppointment = (appointment: Appointment) => appointment.status === "SCHEDULED" && !hasAppointmentStarted(appointment, currentTime);
+
+  const canCancelAppointment = (appointment: Appointment) => appointment.status === "SCHEDULED" && !hasAppointmentStarted(appointment, currentTime);
+
+  const canCheckoutAppointment = (appointment: Appointment) =>
+    appointment.status === "SCHEDULED" &&
+    appointment.conexaCheckInStatus === "COMPLETED" &&
+    Boolean(appointment.conexaPersonId) &&
+    Boolean(appointment.conexaWorkspaceId);
+
+  const handleCancelFromList = (appointment: Appointment) => {
+    if (!canCancelAppointment(appointment)) {
+      return;
+    }
+
+    Alert.alert("Cancelar agendamento", `Deseja cancelar a consulta \"${appointment.title}\"?`, [
+      { text: "Voltar", style: "cancel" },
+      { text: "Cancelar agendamento", style: "destructive", onPress: () => cancelAppointment.mutate(appointment.id) },
+    ]);
+  };
+
+  const handleCheckoutFromList = (appointment: Appointment) => {
+    if (!canCheckoutAppointment(appointment)) {
+      return;
+    }
+
+    Alert.alert("Realizar checkout", `Deseja finalizar a consulta \"${appointment.title}\" agora?`, [
+      { text: "Nao", style: "cancel" },
+      {
+        text: "Sim, finalizar",
+        style: "default",
+        onPress: () => {
+          setCheckoutingAppointmentId(appointment.id);
+          checkoutAppointment.mutate(appointment.id);
+        },
+      },
+    ]);
   };
 
   const setMode = (mode: ScheduleMode) => {
@@ -573,21 +695,43 @@ export default function AppointmentsScreen() {
         ) : null}
 
         <View style={styles.list}>
-          {appointments.map((appointment) => (
-            <Pressable key={appointment.id} onPress={() => openEdit(appointment)}>
-              <Card>
+          {appointments.map((appointment) => {
+            const canEdit = canEditAppointment(appointment);
+            const canCancel = canCancelAppointment(appointment);
+            const canCheckout = canCheckoutAppointment(appointment);
+            const hasActions = canEdit || canCancel || canCheckout;
+
+            return (
+              <Card key={appointment.id}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.appointmentTitle}>{appointment.title}</Text>
-                  <StatusPill status={appointment.status} />
+                  <StatusPill appointment={appointment} currentTime={currentTime} />
                 </View>
                 <Text style={styles.detail}>{formatAppointmentRange(appointment.startTime, appointment.endTime)}</Text>
                 <Text style={styles.detail}>Sala {appointment.room?.name ?? appointment.roomId}</Text>
                 <Text style={styles.detail}>{appointment.patient?.name ? `Paciente ${appointment.patient.name}` : "Sem paciente"}</Text>
                 {appointment.conexaCheckInAt ? <Text style={styles.detail}>Check-in em {formatDateTime(appointment.conexaCheckInAt)}</Text> : null}
+                {appointment.conexaCheckOutAt ? <Text style={styles.detail}>Checkout em {formatDateTime(appointment.conexaCheckOutAt)}</Text> : null}
                 {appointment.conexaCheckInError ? <Text style={styles.error}>Erro Conexa: {appointment.conexaCheckInError}</Text> : null}
+
+                {hasActions ? (
+                  <View style={styles.cardActions}>
+                    {canEdit ? <Button title="Alterar" variant="secondary" onPress={() => openEdit(appointment)} style={styles.cardActionButton} /> : null}
+                    {canCheckout ? (
+                      <Button
+                        title="Finalizar (Checkout)"
+                        variant="success"
+                        loading={checkoutAppointment.isPending && checkoutingAppointmentId === appointment.id}
+                        onPress={() => handleCheckoutFromList(appointment)}
+                        style={styles.cardActionButton}
+                      />
+                    ) : null}
+                    {canCancel ? <Button title="Cancelar" variant="danger" onPress={() => handleCancelFromList(appointment)} style={styles.cardActionButton} /> : null}
+                  </View>
+                ) : null}
               </Card>
-            </Pressable>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -1055,11 +1199,30 @@ export default function AppointmentsScreen() {
   );
 }
 
-function StatusPill({ status }: { status: AppointmentStatus }) {
-  const label = status === "SCHEDULED" ? "Agendada" : status === "COMPLETED" ? "Concluida" : "Cancelada";
+function StatusPill({ appointment, currentTime }: { appointment: Appointment; currentTime: Date }) {
+  const displayStatus = getAppointmentDisplayStatus(appointment, currentTime);
+
   return (
-    <View style={[styles.status, status === "CANCELED" && styles.statusDanger, status === "COMPLETED" && styles.statusSuccess]}>
-      <Text style={styles.statusText}>{label}</Text>
+    <View
+      style={[
+        styles.status,
+        (displayStatus.state === "cancelado" || displayStatus.state === "falha-checkin") && styles.statusDanger,
+        displayStatus.state === "concluido" && styles.statusSuccess,
+        displayStatus.state === "processando" && styles.statusWarning,
+        displayStatus.state === "em-atendimento" && styles.statusInProgress,
+      ]}
+    >
+      <Text
+        style={[
+          styles.statusText,
+          (displayStatus.state === "cancelado" || displayStatus.state === "falha-checkin") && styles.statusTextDanger,
+          displayStatus.state === "concluido" && styles.statusTextSuccess,
+          displayStatus.state === "processando" && styles.statusTextWarning,
+          displayStatus.state === "em-atendimento" && styles.statusTextInProgress,
+        ]}
+      >
+        {displayStatus.label}
+      </Text>
     </View>
   );
 }
@@ -1197,6 +1360,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  cardActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+  },
+  cardActionButton: {
+    minHeight: 40,
+    paddingHorizontal: 10,
+  },
   conexa: {
     color: colors.primaryLight,
     fontSize: 14,
@@ -1219,10 +1392,28 @@ const styles = StyleSheet.create({
   statusSuccess: {
     backgroundColor: "#DCFCE7",
   },
+  statusWarning: {
+    backgroundColor: "#FEF3C7",
+  },
+  statusInProgress: {
+    backgroundColor: "#D1FAE5",
+  },
   statusText: {
     color: colors.primary,
     fontSize: 12,
     fontWeight: "900",
+  },
+  statusTextDanger: {
+    color: "#991B1B",
+  },
+  statusTextSuccess: {
+    color: "#166534",
+  },
+  statusTextWarning: {
+    color: "#92400E",
+  },
+  statusTextInProgress: {
+    color: "#065F46",
   },
   form: {
     gap: 14,

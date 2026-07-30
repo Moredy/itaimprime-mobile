@@ -1,6 +1,6 @@
 {
   "name": "itaim-prime-lounge",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -37,6 +37,7 @@
     "react-native-calendars": "^1.1314.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-sse": "^1.2.1",
     "react-native-web": "^0.21.0",
     "superjson": "^2.2.2",
     "zod": "^4.1.9"

@@ -11,8 +11,10 @@ import { Screen } from "@/components/Screen";
 import { SelectField } from "@/components/SelectField";
 import { EmptyState, LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
+import { useAppointmentRealtime } from "@/hooks/useAppointmentRealtime";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
+import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
 import type { Appointment, AvailableSlot, Patient, Room } from "@/types/api";
 import { addMinutesToDate, createLocalDate, formatCpf, formatTime, toDate } from "@/utils/format";
@@ -71,6 +73,8 @@ const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5)
 export default function EditAppointmentScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { status: authStatus } = useAuth();
+  useAppointmentRealtime(authStatus === "authenticated");
   const params = useLocalSearchParams<{ appointmentId?: string }>();
   const appointmentId = typeof params.appointmentId === "string" ? params.appointmentId : "";
 

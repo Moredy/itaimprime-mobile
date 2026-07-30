@@ -11,6 +11,7 @@ import { DateTimeField } from "@/components/DateTimeField";
 import { Screen } from "@/components/Screen";
 import { LoadingState } from "@/components/StateView";
 import { TextField } from "@/components/TextField";
+import { useAppointmentRealtime } from "@/hooks/useAppointmentRealtime";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
@@ -86,7 +87,8 @@ LocaleConfig.defaultLocale = "pt-br";
 export default function NewAppointmentScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, status: authStatus } = useAuth();
+  useAppointmentRealtime(authStatus === "authenticated");
 
   const today = React.useMemo(() => {
     const now = new Date();
@@ -347,7 +349,7 @@ export default function NewAppointmentScreen() {
       return;
     }
 
-    createAppointment.mutate();
+    createAppointment.mutate({});
   };
 
   const createProgress = (createStep / 4) * 100;

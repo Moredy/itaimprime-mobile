@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
 import { colors } from "@/theme/colors";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost";
 
 export function Button({
   title,
@@ -23,6 +23,7 @@ export function Button({
     primary: styles.primaryText,
     secondary: styles.secondaryText,
     danger: styles.dangerText,
+    success: styles.successText,
     ghost: styles.ghostText,
   } satisfies Record<ButtonVariant, object>;
 
@@ -68,6 +69,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
     borderColor: colors.danger,
   },
+  success: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
   ghost: {
     backgroundColor: "transparent",
     borderColor: "transparent",
@@ -89,6 +94,9 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   dangerText: {
+    color: "#fff",
+  },
+  successText: {
     color: "#fff",
   },
   ghostText: {

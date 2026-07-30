@@ -75,6 +75,7 @@ export type Appointment = {
   conexaPersonId?: string | null;
   conexaCheckInStatus?: string | null;
   conexaCheckInAt?: Date | string | null;
+  conexaCheckOutAt?: Date | string | null;
   conexaCheckInError?: string | null;
   room?: Room;
   patient?: Patient | null;
