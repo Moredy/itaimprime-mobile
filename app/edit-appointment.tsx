@@ -62,12 +62,6 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const timeOptions = Array.from({ length: 40 }, (_, index) => {
-  const hour = 8 + Math.floor((index * 15) / 60);
-  const minute = (index * 15) % 60;
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-});
-
 const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
 
 export default function EditAppointmentScreen() {
@@ -159,6 +153,16 @@ export default function EditAppointmentScreen() {
         duration,
         excludeAppointmentId: editingAppointment?.id,
       }) as Promise<Room[]>,
+  });
+
+  const availableTimesQuery = useQuery({
+    queryKey: ["available-times", date, duration],
+    enabled: scheduleMode === "by-time" && Boolean(date) && duration > 0,
+    queryFn: () =>
+      trpcClient.appointment.getAvailableTimesForDate.query({
+        date: createLocalDate(date),
+        duration,
+      }) as Promise<string[]>,
   });
 
   const rooms = roomsQuery.data ?? [];
@@ -407,6 +411,10 @@ export default function EditAppointmentScreen() {
                       </>
                     ) : (
                       <>
+                        {availableTimesQuery.isFetching ? <LoadingState label="Carregando horarios..." /> : null}
+                        {!availableTimesQuery.isFetching && (availableTimesQuery.data ?? []).length === 0 ? (
+                          <Text style={styles.emptyHint}>Nao ha horarios disponiveis para a data selecionada.</Text>
+                        ) : null}
                         <SelectField
                           label="Horario"
                           value={time}
@@ -417,7 +425,7 @@ export default function EditAppointmentScreen() {
                             }
                           }}
                           placeholder="Selecione um horario"
-                          options={timeOptions.map((item) => ({ label: item, value: item }))}
+                          options={(availableTimesQuery.data ?? []).map((item) => ({ label: item, value: item }))}
                         />
 
                         <Text style={styles.sectionTitle}>Salas disponiveis</Text>

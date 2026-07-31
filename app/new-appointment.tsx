@@ -62,18 +62,7 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const timeOptions = Array.from({ length: 40 }, (_, index) => {
-  const hour = 8 + Math.floor((index * 15) / 60);
-  const minute = (index * 15) % 60;
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-});
-
 const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
-
-const toMinutes = (value: string) => {
-  const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
-};
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
@@ -148,33 +137,11 @@ export default function NewAppointmentScreen() {
   const availableTimesQuery = useQuery({
     queryKey: ["available-times", date, duration],
     enabled: Boolean(date) && duration > 0,
-    queryFn: async () => {
-      const workStartMinutes = 8 * 60;
-      const workEndMinutes = 18 * 60;
-      const validTimeOptions = timeOptions.filter((option) => {
-        const startMinutes = toMinutes(option);
-        const endMinutes = startMinutes + duration;
-        return startMinutes >= workStartMinutes && endMinutes <= workEndMinutes;
-      });
-
-      const checks = await Promise.all(
-        validTimeOptions.map(async (option) => {
-          try {
-            const rooms = (await trpcClient.appointment.getAvailableRoomsForTime.query({
-              date: createLocalDate(date),
-              time: option,
-              duration,
-            })) as Room[];
-
-            return rooms.length > 0 ? option : null;
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      return checks.filter((option): option is string => Boolean(option));
-    },
+    queryFn: () =>
+      trpcClient.appointment.getAvailableTimesForDate.query({
+        date: createLocalDate(date),
+        duration,
+      }) as Promise<string[]>,
   });
 
   const createAppointment = useMutation({
