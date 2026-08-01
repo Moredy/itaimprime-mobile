@@ -45,15 +45,20 @@ export default function SettingsScreen() {
     [specialtyOptionsQuery.data],
   );
 
-  const isSelectedSpecialtyValid = !specialty || specialtyOptions.some((option) => option.value === specialty);
+  const normalizedSpecialty = specialty.trim();
+  const isSelectedSpecialtyValid = specialtyOptions.some((option) => option.value === normalizedSpecialty);
 
   const saveSpecialty = useMutation({
     mutationFn: async () => {
+      if (!normalizedSpecialty) {
+        throw new Error("Especialidade e obrigatoria.");
+      }
+
       if (!isSelectedSpecialtyValid) {
         throw new Error("Selecione uma especialidade valida da lista.");
       }
 
-      await trpcClient.settings.updateSpecialty.mutate({ specialty: specialty || null });
+      await trpcClient.settings.updateSpecialty.mutate({ specialty: normalizedSpecialty });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.specialtyOptions });
@@ -85,15 +90,22 @@ export default function SettingsScreen() {
           value={specialty}
           onValueChange={setSpecialty}
           options={specialtyOptions}
-          placeholder="Sem especialidade"
+          placeholder="Selecione uma especialidade"
           enabled={specialtyOptions.length > 0}
         />
+
+        {!normalizedSpecialty ? <Text style={styles.warningText}>Especialidade obrigatoria para salvar o perfil.</Text> : null}
 
         {specialty && !isSelectedSpecialtyValid ? (
           <Text style={styles.warningText}>A especialidade atual nao esta no dominio. Selecione uma opcao valida para salvar.</Text>
         ) : null}
 
-        <Button title="Salvar especialidade" loading={saveSpecialty.isPending} onPress={() => saveSpecialty.mutate()} />
+        <Button
+          title="Salvar especialidade"
+          loading={saveSpecialty.isPending}
+          disabled={specialtyOptions.length === 0}
+          onPress={() => saveSpecialty.mutate()}
+        />
         <Button title="Sair" variant="secondary" onPress={signOut} />
       </Card>
     </Screen>

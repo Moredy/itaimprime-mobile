@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
@@ -21,7 +21,7 @@ import { getErrorMessage } from "@/utils/errors";
 const signupSchema = z
   .object({
     name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres."),
-    specialty: z.string(),
+    specialty: z.string().min(1, "Especialidade e obrigatoria."),
     password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres."),
     confirmPassword: z.string().min(6, "Confirme a senha."),
   })
@@ -37,11 +37,17 @@ export default function SignupScreen() {
 
   const specialtyOptionsQuery = useQuery({
     queryKey: queryKeys.specialtyOptions,
-    queryFn: () => trpcClient.auth.getSignupSpecialtyOptions.query() as Promise<Array<{ id: string; name: string }>>,
+    queryFn: () => trpcClient.auth.getSignupSpecialtyOptions.query() as Promise<{ id: string; name: string }[]>,
   });
 
-  const specialtyOptions = (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name }));
-  const isSelectedSpecialtyValid = (value: string) => specialtyOptions.some((option) => option.value === value);
+  const specialtyOptions = useMemo(
+    () => (specialtyOptionsQuery.data ?? []).map((option) => ({ label: option.name, value: option.name })),
+    [specialtyOptionsQuery.data],
+  );
+  const isSelectedSpecialtyValid = useCallback(
+    (value: string) => specialtyOptions.some((option) => option.value === value),
+    [specialtyOptions],
+  );
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -65,14 +71,14 @@ export default function SignupScreen() {
 
   const signupMutation = useMutation({
     mutationFn: (data: z.infer<typeof signupSchema>) => {
-      if (data.specialty && !isSelectedSpecialtyValid(data.specialty)) {
+      if (!isSelectedSpecialtyValid(data.specialty)) {
         throw new Error("Selecione uma especialidade valida da lista.");
       }
 
       return trpcClient.auth.signup.mutate({
         email,
         name: data.name.trim(),
-        specialty: data.specialty || null,
+        specialty: data.specialty.trim(),
         password: data.password,
       });
     },
@@ -116,7 +122,7 @@ export default function SignupScreen() {
                   value={isSelectedSpecialtyValid(field.value) ? field.value : ""}
                   onValueChange={field.onChange}
                   options={specialtyOptions}
-                  placeholder="Sem especialidade"
+                  placeholder="Selecione uma especialidade"
                   enabled={specialtyOptions.length > 0}
                   error={fieldState.error?.message}
                 />
