@@ -15,7 +15,7 @@ const config: ExpoConfig = {
   name: appName,
   slug: appSlug,
   scheme: "agendamedica",
-  version: "3.0.0",
+  version: "4.0.0",
   icon: "./assets/icon.png",
   orientation: "portrait",
   userInterfaceStyle: "light",
