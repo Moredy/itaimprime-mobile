@@ -62,7 +62,9 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
+const durationOptions = [30, 60, 240, 360, 480];
+const getPatientLimit = (duration: number) => Math.max(1, duration / 30);
+const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
@@ -100,7 +102,7 @@ export default function NewAppointmentScreen() {
   const [time, setTime] = React.useState("");
   const [duration, setDuration] = React.useState(30);
   const [roomId, setRoomId] = React.useState("");
-  const [patientId, setPatientId] = React.useState("");
+  const [patientIds, setPatientIds] = React.useState<string[]>([]);
   const [withoutPatient, setWithoutPatient] = React.useState(true);
   const [showInlinePatientForm, setShowInlinePatientForm] = React.useState(false);
   const [inlinePatientName, setInlinePatientName] = React.useState("");
@@ -163,7 +165,7 @@ export default function NewAppointmentScreen() {
         startTime,
         endTime: addMinutesToDate(startTime, duration),
         roomId: resolvedRoomId,
-        patientId: withoutPatient ? undefined : overridePatientId ?? patientId,
+        patientIds: withoutPatient ? undefined : overridePatientId ? [...patientIds, overridePatientId] : patientIds,
         withoutPatient,
       });
     },
@@ -233,9 +235,10 @@ export default function NewAppointmentScreen() {
     date &&
     time &&
     duration >= 30 &&
-    duration <= 120 &&
+    duration <= 480 &&
     roomId &&
-    (withoutPatient || patientId || canCreateWithInlinePatient) &&
+    (withoutPatient || patientIds.length > 0 || canCreateWithInlinePatient) &&
+    patientIds.length <= getPatientLimit(duration) &&
     (!isAutoRotationRoomId(roomId) ||
       Boolean(
         roomId === AUTO_SELECT_GYNECOLOGY_ROOM_ID
@@ -305,7 +308,7 @@ export default function NewAppointmentScreen() {
       return;
     }
 
-    if (canCreateWithInlinePatient && !patientId) {
+    if (canCreateWithInlinePatient && patientIds.length === 0) {
       if (!validateInlinePatient()) {
         return;
       }
@@ -360,7 +363,7 @@ export default function NewAppointmentScreen() {
                       }}
                       style={[styles.timeChip, duration === optionDuration && styles.timeChipActive]}
                     >
-                      <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{optionDuration} min</Text>
+                      <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{formatDuration(optionDuration)}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -494,7 +497,7 @@ export default function NewAppointmentScreen() {
                     onValueChange={(nextValue) => {
                       setWithoutPatient(nextValue);
                       if (nextValue) {
-                        setPatientId("");
+                        setPatientIds([]);
                         setShowInlinePatientForm(false);
                         setInlinePatientErrors({});
                       }
@@ -504,7 +507,7 @@ export default function NewAppointmentScreen() {
 
                 {!withoutPatient ? (
                   <>
-                    <Text style={styles.sectionTitle}>{showInlinePatientForm ? "Novo paciente" : "Selecione o paciente"}</Text>
+                    <Text style={styles.sectionTitle}>{showInlinePatientForm ? "Novo paciente" : `Selecione os pacientes (máximo: ${getPatientLimit(duration)})`}</Text>
 
                     {!showInlinePatientForm ? (
                       <>
@@ -518,13 +521,14 @@ export default function NewAppointmentScreen() {
                             <Pressable
                               key={patient.id}
                               onPress={() => {
-                                setPatientId(patient.id);
+                                setPatientIds((current) => current.includes(patient.id) ? current.filter((id) => id !== patient.id) : [...current, patient.id]);
                                 setShowInlinePatientForm(false);
                                 setInlinePatientErrors({});
                               }}
-                              style={[styles.option, patientId === patient.id && styles.optionActive]}
+                              disabled={!patientIds.includes(patient.id) && patientIds.length >= getPatientLimit(duration)}
+                              style={[styles.option, patientIds.includes(patient.id) && styles.optionActive]}
                             >
-                              <Text style={[styles.optionTitle, patientId === patient.id && styles.optionTitleActive]}>{patient.name}</Text>
+                              <Text style={[styles.optionTitle, patientIds.includes(patient.id) && styles.optionTitleActive]}>{patient.name}</Text>
                               <Text style={styles.optionMeta}>{formatCpf(patient.cpf)}</Text>
                             </Pressable>
                           ))}
@@ -542,7 +546,7 @@ export default function NewAppointmentScreen() {
                             setInlinePatientErrors({});
                             return;
                           }
-                          setPatientId("");
+                          setPatientIds([]);
                           setShowInlinePatientForm(true);
                         }}
                       />

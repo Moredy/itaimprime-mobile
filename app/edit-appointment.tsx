@@ -62,7 +62,25 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
+const durationOptions = [30, 60, 240, 360, 480];
+const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
+
+const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[]) => {
+  const linkedPatients = appointment.patients?.length
+    ? appointment.patients
+    : appointment.appointmentPatients
+      ?.map((item) => item.patient)
+      .filter((patient): patient is Patient => Boolean(patient)) ?? [];
+  const appointmentPatients = linkedPatients.length
+    ? linkedPatients
+    : appointment.patientIds?.length
+      ? patients.filter((patient) => appointment.patientIds?.includes(patient.id))
+      : appointment.patient
+        ? [appointment.patient]
+        : [];
+
+  return [...new Set(appointmentPatients.map((patient) => patient.name).filter(Boolean))];
+};
 
 export default function EditAppointmentScreen() {
   const router = useRouter();
@@ -223,7 +241,14 @@ export default function EditAppointmentScreen() {
         startTime,
         endTime: addMinutesToDate(startTime, duration),
         roomId: resolvedRoomId,
-        patientId: withoutPatient ? undefined : patientId,
+        patientIds: withoutPatient
+          ? []
+          : editingAppointment.patientIds?.length
+            ? editingAppointment.patientIds
+            : patientId
+              ? [patientId]
+              : undefined,
+        withoutPatient,
       });
     },
     onSuccess: async () => {
@@ -297,6 +322,7 @@ export default function EditAppointmentScreen() {
   };
 
   const selectedPatient = patients.find((patient) => patient.id === patientId);
+  const selectedPatientNames = editingAppointment ? getAppointmentPatientNames(editingAppointment, patients) : [];
 
   return (
     <>
@@ -465,12 +491,16 @@ export default function EditAppointmentScreen() {
                       }}
                       placeholder="Selecione a duracao"
                       options={durationOptions.map((optionDuration) => ({
-                        label: `${optionDuration} min`,
+                        label: formatDuration(optionDuration),
                         value: String(optionDuration),
                       }))}
                     />
 
-                    {selectedPatient ? <Text style={styles.detail}>Paciente selecionado: {selectedPatient.name}</Text> : null}
+                    {selectedPatientNames.length > 0 ? (
+                      <Text style={styles.detail}>
+                        {selectedPatientNames.length === 1 ? "Paciente selecionado" : "Pacientes selecionados"}: {selectedPatientNames.join(", ")}
+                      </Text>
+                    ) : selectedPatient ? <Text style={styles.detail}>Paciente selecionado: {selectedPatient.name}</Text> : null}
                     <View style={styles.sectionDivider} />
                     <TextField label="Titulo (opcional)" value={title} onChangeText={setTitle} />
                     <TextField label="Descrição (opcional)" value={description} onChangeText={setDescription} multiline />

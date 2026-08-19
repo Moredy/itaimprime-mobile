@@ -76,6 +76,20 @@ const statusOptions: { label: string; value?: AppointmentStatus }[] = [
 
 const isAppointmentEditable = (appointment: Appointment) => appointment.status === "SCHEDULED";
 
+const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[]) => {
+  const appointmentPatients = appointment.patients?.length
+    ? appointment.patients
+    : appointment.appointmentPatients?.map((item) => item.patient).filter((patient): patient is Patient => Boolean(patient)).length
+      ? appointment.appointmentPatients.map((item) => item.patient).filter((patient): patient is Patient => Boolean(patient))
+    : appointment.patientIds?.length
+      ? patients.filter((patient) => appointment.patientIds?.includes(patient.id))
+      : appointment.patient
+        ? [appointment.patient]
+        : [];
+
+  return [...new Set(appointmentPatients.map((patient) => patient.name).filter(Boolean))];
+};
+
 type AppointmentDisplayState = "agendado" | "processando" | "em-atendimento" | "concluido" | "cancelado" | "falha-checkin";
 
 type AppointmentDisplay = {
@@ -700,6 +714,7 @@ export default function AppointmentsScreen() {
             const canCancel = canCancelAppointment(appointment);
             const canCheckout = canCheckoutAppointment(appointment);
             const hasActions = canEdit || canCancel || canCheckout;
+            const patientNames = getAppointmentPatientNames(appointment, patients);
 
             return (
               <Card key={appointment.id}>
@@ -709,7 +724,9 @@ export default function AppointmentsScreen() {
                 </View>
                 <Text style={styles.detail}>{formatAppointmentRange(appointment.startTime, appointment.endTime)}</Text>
                 <Text style={styles.detail}>Sala {appointment.room?.name ?? appointment.roomId}</Text>
-                <Text style={styles.detail}>{appointment.patient?.name ? `Paciente ${appointment.patient.name}` : "Sem paciente"}</Text>
+                <Text style={styles.detail}>
+                  {patientNames.length > 0 ? `${patientNames.length === 1 ? "Paciente" : "Pacientes"} ${patientNames.join(", ")}` : "Sem paciente"}
+                </Text>
                 {appointment.conexaCheckInAt ? <Text style={styles.detail}>Check-in em {formatDateTime(appointment.conexaCheckInAt)}</Text> : null}
                 {appointment.conexaCheckOutAt ? <Text style={styles.detail}>Checkout em {formatDateTime(appointment.conexaCheckOutAt)}</Text> : null}
                 {appointment.conexaCheckInError ? <Text style={styles.error}>Erro Conexa: {appointment.conexaCheckInError}</Text> : null}
