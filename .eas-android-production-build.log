@@ -1,0 +1,60 @@
+
+⚠️ Detected that your app uses Expo Go for development, this is not recommended when building production apps.
+Learn more: https://expo.fyi/why-not-build-expo-go-for-production
+To suppress this warning, set EAS_BUILD_NO_EXPO_GO_WARNING=true.
+
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "production" environment on EAS.
+Environment variables loaded from the "production" build profile "env" configuration: APP_ENV, EXPO_PUBLIC_API_URL, APP_NAME, APP_SLUG.
+
+- Incrementing versionCode from 5 to 6.
+√ Incremented versionCode from 5 to 6.
+
+
+√ Using remote Android credentials (Expo server)
+√ Using Keystore from configuration: Build Credentials g13HiHXF9y (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+- Uploading to EAS Build (0 / 475 KB)
+√ Uploaded to EAS 1s
+- Computing project fingerprint
+⏱  [profile] getExpoAutolinkingIosSourcesAsync: 24.543ms
+⏱  [profile] getPackageJsonScriptSourcesAsync: 23.114ms
+⏱  [profile] getBareIosSourcesAsync: 21.952ms
+⏱  [profile] getCoreAutolinkingSourcesFromExpoIos: 3.58ms
+⏱  [profile] getCoreAutolinkingSourcesFromRncCliAsync: 3.626ms
+⏱  [profile] getDefaultPackageSourcesAsync: 2.614ms
+⏱  [profile] getExpoConfigSourcesAsync: 26.189ms
+⏱  [profile] getEasBuildSourcesAsync: 25.332ms
+⏱  [profile] getExpoCNGPatchSourcesAsync: 25.416ms
+⏱  [profile] getGitIgnoreSourcesAsync: 25.694ms
+⏱  [profile] getBareAndroidSourcesAsync: 24.652ms
+⏱  [profile] getPatchPackageSourcesAsync: 6.063ms
+⏱  [profile] getExpoAutolinkingAndroidSourcesAsync: 253.28ms
+⏱  [profile] getCoreAutolinkingSourcesFromExpoAndroid: 438.517ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-constants/android): 365.496ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-font/android): 365.966ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-linking/android): 366.577ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo/node_modules/expo-asset/android): 372.101ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo/node_modules/expo-keep-awake/android): 372.472ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-splash-screen/android): 374.699ms
+⏱  [profile] createDirHashResultsAsync(node_modules/@react-native-community/datetimepicker): 393.781ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo): 398.629ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo/node_modules/expo-file-system/android): 425.977ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-secure-store/android): 429.53ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-modules-core/expo-module-gradle-plugin): 430.202ms
+⏱  [profile] createDirHashResultsAsync(node_modules/@react-native-async-storage/async-storage): 440.644ms
+⏱  [profile] createDirHashResultsAsync(node_modules/@react-native-picker/picker): 440.612ms
+⏱  [profile] createDirHashResultsAsync(node_modules/react-native-safe-area-context): 442.618ms
+⏱  [profile] createDirHashResultsAsync(node_modules/expo-modules-core/android): 461.325ms
+⏱  [profile] createDirHashResultsAsync(node_modules/react-native-screens): 496.258ms
+√ Computed project fingerprint
+
+See logs: https://expo.dev/accounts/itaim-prime/projects/itaim-prime-lounge/builds/2fa17e14-00db-4b43-a499-8b505873e0b5
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+- Waiting for build to complete.
+√ Build finished
+
+🤖 Android app:
+https://expo.dev/artifacts/eas/_yhbo0aoGO0-r6rjc1sicYbkaRtpoj3SaRH5yjrkQCs.aab

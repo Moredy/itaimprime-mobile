@@ -62,7 +62,7 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = [30, 60, 240, 360, 480];
+const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
 const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
 
 const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[]) => {
@@ -95,7 +95,7 @@ export default function EditAppointmentScreen() {
   const [description, setDescription] = React.useState("");
   const [date, setDate] = React.useState(format(new Date(), "yyyy-MM-dd"));
   const [time, setTime] = React.useState("");
-  const [duration, setDuration] = React.useState(30);
+  const [duration, setDuration] = React.useState(60);
   const [roomId, setRoomId] = React.useState("");
   const [patientId, setPatientId] = React.useState("");
   const [withoutPatient, setWithoutPatient] = React.useState(false);
@@ -286,7 +286,7 @@ export default function EditAppointmentScreen() {
     date &&
     time &&
     duration >= 30 &&
-    duration <= 120 &&
+    duration <= 480 &&
     roomId &&
     (withoutPatient || patientId) &&
     (!isAutoRotationRoomId(roomId) || Boolean(selectedAutoRoomCandidateId));

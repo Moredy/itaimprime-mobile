@@ -154,7 +154,7 @@ const timeOptions = Array.from({ length: 40 }, (_, index) => {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
-const durationOptions = Array.from({ length: 19 }, (_, index) => 30 + index * 5);
+const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
@@ -188,7 +188,7 @@ export default function AppointmentsScreen() {
   const [description, setDescription] = React.useState("");
   const [date, setDate] = React.useState(format(addMinutes(new Date(), 24 * 60), "yyyy-MM-dd"));
   const [time, setTime] = React.useState("");
-  const [duration, setDuration] = React.useState(30);
+  const [duration, setDuration] = React.useState(60);
   const [roomId, setRoomId] = React.useState("");
   const [patientId, setPatientId] = React.useState("");
   const [withoutPatient, setWithoutPatient] = React.useState(false);
@@ -419,7 +419,7 @@ export default function AppointmentsScreen() {
     setDescription("");
     setDate(format(addMinutes(new Date(), 24 * 60), "yyyy-MM-dd"));
     setTime("");
-    setDuration(30);
+    setDuration(60);
     setRoomId("");
     setPatientId("");
     setWithoutPatient(false);
@@ -549,7 +549,7 @@ export default function AppointmentsScreen() {
 
   const canGoNextStep =
     (createStep === 1 && Boolean(withoutPatient || patientId)) ||
-    (createStep === 2 && duration >= 30 && duration <= 120) ||
+    (createStep === 2 && duration >= 30 && duration <= 480) ||
     (createStep === 3 && Boolean(date) && Boolean(time)) ||
     createStep === 4;
 
@@ -582,7 +582,7 @@ export default function AppointmentsScreen() {
     date &&
     time &&
     duration >= 30 &&
-    duration <= 120 &&
+    duration <= 480 &&
     roomId &&
     (withoutPatient || patientId) &&
     (!shouldUseAutoRotationOnEdit || (!needsAutoRoomRevalidation && isAutoRotationRoomId(roomId) && Boolean(selectedAutoRoomCandidateId))) &&
@@ -839,7 +839,7 @@ export default function AppointmentsScreen() {
                       <View style={styles.optionGrid}>
                         {durationOptions.map((optionDuration) => (
                           <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
-                            <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration} min</Text>
+                            <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration === 30 ? "30 min" : `${optionDuration / 60}h`}</Text>
                             <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                           </Pressable>
                         ))}
@@ -1048,7 +1048,7 @@ export default function AppointmentsScreen() {
                   <View style={styles.optionGrid}>
                     {durationOptions.map((optionDuration) => (
                       <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
-                        <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration} min</Text>
+                        <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration === 30 ? "30 min" : `${optionDuration / 60}h`}</Text>
                         <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                       </Pressable>
                     ))}

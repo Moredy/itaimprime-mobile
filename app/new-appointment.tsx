@@ -62,7 +62,7 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = [30, 60, 240, 360, 480];
+const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
 const getPatientLimit = (duration: number) => Math.max(1, duration / 30);
 const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
 
@@ -100,7 +100,7 @@ export default function NewAppointmentScreen() {
   const [description, setDescription] = React.useState("");
   const [date, setDate] = React.useState("");
   const [time, setTime] = React.useState("");
-  const [duration, setDuration] = React.useState(30);
+  const [duration, setDuration] = React.useState(60);
   const [roomId, setRoomId] = React.useState("");
   const [patientIds, setPatientIds] = React.useState<string[]>([]);
   const [withoutPatient, setWithoutPatient] = React.useState(true);
