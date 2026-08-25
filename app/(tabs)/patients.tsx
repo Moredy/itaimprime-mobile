@@ -35,22 +35,28 @@ export default function PatientsScreen() {
   };
 
   const patients = patientsQuery.data ?? [];
+  const hasSearch = search.trim().length > 0;
+  const showToolbar = !patientsQuery.isLoading && (hasSearch || patients.length > 0);
 
   return (
     <Screen>
       <AppTopBar />
-      <View style={styles.toolbar}>
-        <TextField label="Buscar" placeholder="Nome, CPF ou telefone" value={search} onChangeText={setSearch} />
-        <Button title="Novo paciente" onPress={openCreate} />
-      </View>
+      {showToolbar ? (
+        <View style={styles.toolbar}>
+          <TextField label="Buscar" placeholder="Nome, CPF ou telefone" value={search} onChangeText={setSearch} />
+          <Button title="Novo paciente" onPress={openCreate} />
+        </View>
+      ) : null}
 
       {patientsQuery.isLoading ? <LoadingState label="Carregando pacientes..." /> : null}
       {!patientsQuery.isLoading && patients.length === 0 ? (
         <EmptyState
-          title={search ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
-          description={search ? "Tente outro termo de busca." : "Cadastre o primeiro paciente para usar nos agendamentos."}
-          actionLabel="Novo paciente"
-          onAction={openCreate}
+          title={hasSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+          description={
+            hasSearch ? "Tente outro termo de busca." : "Cadastre o primeiro paciente para usar nos agendamentos."
+          }
+          actionLabel={hasSearch ? undefined : "Novo paciente"}
+          onAction={hasSearch ? undefined : openCreate}
         />
       ) : null}
 
