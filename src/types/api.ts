@@ -27,8 +27,8 @@ export type Patient = {
   id: string;
   name: string;
   cpf: string;
-  birthDate: Date | string;
-  phone: string;
+  birthDate: Date | string | null;
+  phone: string | null;
   userId: string;
   createdAt: Date | string;
   updatedAt: Date | string;

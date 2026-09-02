@@ -69,8 +69,8 @@ export default function PatientsScreen() {
                 <Text style={styles.edit}>Editar</Text>
               </View>
               <Text style={styles.detail}>CPF {formatCpf(patient.cpf)}</Text>
-              <Text style={styles.detail}>Telefone {formatPhone(patient.phone)}</Text>
-              <Text style={styles.detail}>Nascimento {formatDate(patient.birthDate)}</Text>
+              <Text style={styles.detail}>Telefone {patient.phone ? formatPhone(patient.phone) : "Não informado"}</Text>
+              <Text style={styles.detail}>Nascimento {patient.birthDate ? formatDate(patient.birthDate) : "Não informado"}</Text>
             </Card>
           </Pressable>
         ))}

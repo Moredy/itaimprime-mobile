@@ -19,10 +19,10 @@ import { getErrorMessage } from "@/utils/errors";
 const patientSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres."),
   cpf: z.string().refine((value) => onlyDigits(value).length === 11, "CPF deve conter 11 digitos."),
-  birthDate: z.string().min(10, "Informe a data de nascimento."),
+  birthDate: z.string(),
   phone: z.string().refine((value) => {
     const digits = onlyDigits(value);
-    return digits.length >= 8 && digits.length <= 11;
+    return digits.length === 0 || (digits.length >= 8 && digits.length <= 11);
   }, "Telefone deve ter entre 8 e 11 digitos."),
 });
 
@@ -60,8 +60,8 @@ export default function NewPatientScreen() {
       trpcClient.patient.create.mutate({
         name: data.name.trim(),
         cpf: onlyDigits(data.cpf),
-        birthDate: new Date(`${data.birthDate}T00:00:00`),
-        phone: onlyDigits(data.phone),
+        birthDate: data.birthDate ? new Date(`${data.birthDate}T00:00:00`) : undefined,
+        phone: onlyDigits(data.phone) || undefined,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -119,7 +119,7 @@ export default function NewPatientScreen() {
                   name="birthDate"
                   render={({ field, fieldState }) => (
                     <DateTimeField
-                      label="Data de nascimento"
+                      label="Data de nascimento (opcional)"
                       mode="date"
                       value={field.value}
                       onChange={field.onChange}
@@ -136,7 +136,7 @@ export default function NewPatientScreen() {
                   name="phone"
                   render={({ field, fieldState }) => (
                     <TextField
-                      label="Telefone"
+                      label="Telefone (opcional)"
                       keyboardType="phone-pad"
                       value={formatPhone(field.value)}
                       onChangeText={(value) => field.onChange(formatPhone(value))}

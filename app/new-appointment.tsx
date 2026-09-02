@@ -195,8 +195,8 @@ export default function NewAppointmentScreen() {
       trpcClient.patient.create.mutate({
         name: inlinePatientName.trim(),
         cpf: onlyDigits(inlinePatientCpf),
-        birthDate: new Date(`${inlinePatientBirthDate}T00:00:00`),
-        phone: onlyDigits(inlinePatientPhone),
+        birthDate: inlinePatientBirthDate ? new Date(`${inlinePatientBirthDate}T00:00:00`) : undefined,
+        phone: onlyDigits(inlinePatientPhone) || undefined,
       }) as Promise<Patient>,
     onError: (error) => Alert.alert("Erro ao cadastrar paciente", getErrorMessage(error)),
   });
@@ -282,14 +282,12 @@ export default function NewAppointmentScreen() {
       nextErrors.cpf = "CPF deve conter 11 digitos.";
     }
 
-    if (!inlinePatientBirthDate) {
-      nextErrors.birthDate = "Informe a data de nascimento.";
-    } else if (createLocalDate(inlinePatientBirthDate) > today) {
+    if (inlinePatientBirthDate && createLocalDate(inlinePatientBirthDate) > today) {
       nextErrors.birthDate = "Data de nascimento nao pode ser futura.";
     }
 
     const phoneDigits = onlyDigits(inlinePatientPhone);
-    if (phoneDigits.length < 8 || phoneDigits.length > 11) {
+    if (phoneDigits.length > 0 && (phoneDigits.length < 8 || phoneDigits.length > 11)) {
       nextErrors.phone = "Telefone deve ter entre 8 e 11 digitos.";
     }
 
@@ -579,7 +577,7 @@ export default function NewAppointmentScreen() {
                           error={inlinePatientErrors.cpf}
                         />
                         <DateTimeField
-                          label="Data de nascimento"
+                          label="Data de nascimento (opcional)"
                           mode="date"
                           value={inlinePatientBirthDate}
                           onChange={(value) => {
@@ -594,7 +592,7 @@ export default function NewAppointmentScreen() {
                           iosDateDisplay="spinner"
                         />
                         <TextField
-                          label="Telefone"
+                          label="Telefone (opcional)"
                           keyboardType="phone-pad"
                           value={formatPhone(inlinePatientPhone)}
                           onChangeText={(value) => {
