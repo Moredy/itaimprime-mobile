@@ -18,6 +18,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { colors } from "@/theme/colors";
+import { appointmentDurationOptions, formatAppointmentDuration } from "@/constants/appointment";
 import type { Appointment, AppointmentStatus, AvailableSlot, Patient, Room } from "@/types/api";
 import { addMinutesToDate, createLocalDate, formatAppointmentRange, formatCpf, formatDateTime, formatTime } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
@@ -154,7 +155,6 @@ const timeOptions = Array.from({ length: 40 }, (_, index) => {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
-const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
@@ -837,9 +837,9 @@ export default function AppointmentsScreen() {
                       <TextField label="Descricao" value={description} onChangeText={setDescription} multiline />
                       <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                       <View style={styles.optionGrid}>
-                        {durationOptions.map((optionDuration) => (
+                        {appointmentDurationOptions.map((optionDuration) => (
                           <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
-                            <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration === 30 ? "30 min" : `${optionDuration / 60}h`}</Text>
+                            <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{formatAppointmentDuration(optionDuration)}</Text>
                             <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                           </Pressable>
                         ))}
@@ -1046,9 +1046,9 @@ export default function AppointmentsScreen() {
 
                   <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                   <View style={styles.optionGrid}>
-                    {durationOptions.map((optionDuration) => (
+                    {appointmentDurationOptions.map((optionDuration) => (
                       <Pressable key={optionDuration} onPress={() => setDuration(optionDuration)} style={[styles.option, duration === optionDuration && styles.optionActive]}>
-                        <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{optionDuration === 30 ? "30 min" : `${optionDuration / 60}h`}</Text>
+                        <Text style={[styles.optionTitle, duration === optionDuration && styles.optionTitleActive]}>{formatAppointmentDuration(optionDuration)}</Text>
                         <Text style={styles.optionMeta}>Duracao do atendimento</Text>
                       </Pressable>
                     ))}

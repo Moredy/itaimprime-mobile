@@ -16,6 +16,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
+import { appointmentDurationOptions, formatAppointmentDuration } from "@/constants/appointment";
 import type { Appointment, AvailableSlot, Patient, Room } from "@/types/api";
 import { addMinutesToDate, createLocalDate, formatCpf, formatTime, toDate } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
@@ -62,8 +63,6 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
-const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
 
 const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[]) => {
   const linkedPatients = appointment.patients?.length
@@ -490,8 +489,8 @@ export default function EditAppointmentScreen() {
                         setDuration(parsedDuration);
                       }}
                       placeholder="Selecione a duracao"
-                      options={durationOptions.map((optionDuration) => ({
-                        label: formatDuration(optionDuration),
+                      options={appointmentDurationOptions.map((optionDuration) => ({
+                        label: formatAppointmentDuration(optionDuration),
                         value: String(optionDuration),
                       }))}
                     />

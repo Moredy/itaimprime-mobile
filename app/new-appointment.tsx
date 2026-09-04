@@ -16,6 +16,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { trpcClient } from "@/lib/trpc";
 import { useAuth } from "@/providers/AuthProvider";
 import { colors } from "@/theme/colors";
+import { appointmentDurationOptions, formatAppointmentDuration } from "@/constants/appointment";
 import type { Patient, Room } from "@/types/api";
 import { addMinutesToDate, createLocalDate, formatCpf, formatPhone, onlyDigits } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
@@ -62,9 +63,7 @@ const hasGoldPlan = (contracts: unknown): boolean => {
   });
 };
 
-const durationOptions = [30, 60, 120, 180, 240, 300, 360, 420, 480];
 const getPatientLimit = (duration: number) => Math.max(1, duration / 30);
-const formatDuration = (duration: number) => duration < 60 ? `${duration} min` : `${duration / 60}h`;
 
 LocaleConfig.locales["pt-br"] = {
   monthNames: ["Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
@@ -353,7 +352,7 @@ export default function NewAppointmentScreen() {
 
                 <Text style={styles.sectionTitle}>Tempo da consulta</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timeRow}>
-                  {durationOptions.map((optionDuration) => (
+                  {appointmentDurationOptions.map((optionDuration) => (
                     <Pressable
                       key={optionDuration}
                       onPress={() => {
@@ -361,7 +360,7 @@ export default function NewAppointmentScreen() {
                       }}
                       style={[styles.timeChip, duration === optionDuration && styles.timeChipActive]}
                     >
-                      <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{formatDuration(optionDuration)}</Text>
+                      <Text style={[styles.timeChipText, duration === optionDuration && styles.timeChipTextActive]}>{formatAppointmentDuration(optionDuration)}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>
