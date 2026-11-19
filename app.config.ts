@@ -43,7 +43,7 @@ const config: ExpoConfig = {
   web: {
     favicon: "./assets/favicon.png",
   },
-  plugins: ["expo-router", "expo-secure-store"],
+  plugins: ["expo-router", "expo-secure-store", "./plugins/withOptionalScreenFeatures"],
   experiments: {
     typedRoutes: true,
   },
