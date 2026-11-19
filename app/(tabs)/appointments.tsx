@@ -20,7 +20,7 @@ import { trpcClient } from "@/lib/trpc";
 import { colors } from "@/theme/colors";
 import { appointmentDurationOptions, formatAppointmentDuration } from "@/constants/appointment";
 import type { Appointment, AppointmentStatus, AvailableSlot, Patient, Room } from "@/types/api";
-import { addMinutesToDate, createLocalDate, formatAppointmentRange, formatCpf, formatDateTime, formatTime } from "@/utils/format";
+import { addMinutesToDate, createLocalDate, formatAppointmentRange, formatBirthDateWithAge, formatCpf, formatDateTime, formatPhone, formatTime } from "@/utils/format";
 import { getErrorMessage } from "@/utils/errors";
 
 type FormMode = "create" | "edit";
@@ -77,7 +77,7 @@ const statusOptions: { label: string; value?: AppointmentStatus }[] = [
 
 const isAppointmentEditable = (appointment: Appointment) => appointment.status === "SCHEDULED";
 
-const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[]) => {
+const getAppointmentPatients = (appointment: Appointment, patients: Patient[]): Patient[] => {
   const appointmentPatients = appointment.patients?.length
     ? appointment.patients
     : appointment.appointmentPatients?.map((item) => item.patient).filter((patient): patient is Patient => Boolean(patient)).length
@@ -88,8 +88,42 @@ const getAppointmentPatientNames = (appointment: Appointment, patients: Patient[
         ? [appointment.patient]
         : [];
 
-  return [...new Set(appointmentPatients.map((patient) => patient.name).filter(Boolean))];
+  const seen = new Set<string>();
+  return appointmentPatients.filter((patient) => {
+    if (!patient?.id || seen.has(patient.id)) return false;
+    seen.add(patient.id);
+    return true;
+  });
 };
+
+function AppointmentPatientList({ patients }: { patients: Patient[] }) {
+  if (patients.length === 0) {
+    return <Text style={styles.detail}>Sem paciente</Text>;
+  }
+
+  return (
+    <View style={styles.patientList}>
+      <Text style={styles.patientListTitle}>{patients.length === 1 ? "PACIENTE" : `PACIENTES (${patients.length})`}</Text>
+      {patients.map((patient) => (
+        <View key={patient.id} style={styles.patientItem}>
+          <View style={styles.patientItemAvatar}>
+            <Text style={styles.patientItemAvatarText}>{patient.name?.trim().charAt(0).toUpperCase() || "?"}</Text>
+          </View>
+          <View style={styles.patientItemBody}>
+            <Text style={styles.patientItemName} numberOfLines={1}>
+              {patient.name}
+            </Text>
+            <Text style={styles.patientItemMeta}>CPF {patient.cpf ? formatCpf(patient.cpf) : "nao informado"}</Text>
+            <Text style={styles.patientItemMeta}>Tel. {patient.phone ? formatPhone(patient.phone) : "nao informado"}</Text>
+            <Text style={styles.patientItemMeta}>
+              Nascimento {patient.birthDate ? formatBirthDateWithAge(patient.birthDate) : "nao informado"}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 type AppointmentDisplayState = "agendado" | "processando" | "em-atendimento" | "concluido" | "cancelado" | "falha-checkin";
 
@@ -714,7 +748,7 @@ export default function AppointmentsScreen() {
             const canCancel = canCancelAppointment(appointment);
             const canCheckout = canCheckoutAppointment(appointment);
             const hasActions = canEdit || canCancel || canCheckout;
-            const patientNames = getAppointmentPatientNames(appointment, patients);
+            const appointmentPatients = getAppointmentPatients(appointment, patients);
 
             return (
               <Card key={appointment.id}>
@@ -724,9 +758,7 @@ export default function AppointmentsScreen() {
                 </View>
                 <Text style={styles.detail}>{formatAppointmentRange(appointment.startTime, appointment.endTime)}</Text>
                 <Text style={styles.detail}>Sala {appointment.room?.name ?? appointment.roomId}</Text>
-                <Text style={styles.detail}>
-                  {patientNames.length > 0 ? `${patientNames.length === 1 ? "Paciente" : "Pacientes"} ${patientNames.join(", ")}` : "Sem paciente"}
-                </Text>
+                <AppointmentPatientList patients={appointmentPatients} />
                 {appointment.conexaCheckInAt ? <Text style={styles.detail}>Check-in em {formatDateTime(appointment.conexaCheckInAt)}</Text> : null}
                 {appointment.conexaCheckOutAt ? <Text style={styles.detail}>Checkout em {formatDateTime(appointment.conexaCheckOutAt)}</Text> : null}
                 {appointment.conexaCheckInError ? <Text style={styles.error}>Erro Conexa: {appointment.conexaCheckInError}</Text> : null}
@@ -1376,6 +1408,56 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  patientList: {
+    marginTop: 4,
+    gap: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: 10,
+  },
+  patientListTitle: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  patientItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 10,
+  },
+  patientItemAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  patientItemAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  patientItemBody: {
+    flex: 1,
+    gap: 2,
+  },
+  patientItemName: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  patientItemMeta: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   cardActions: {
     flexDirection: "row",

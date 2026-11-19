@@ -1,4 +1,4 @@
-import { addMinutes, format, parseISO } from "date-fns";
+import { addMinutes, differenceInYears, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export const onlyDigits = (value: string) => value.replace(/\D/g, "");
@@ -39,6 +39,11 @@ export const formatPhone = (value: string) => {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, digits.length - 4)}-${digits.slice(-4)}`;
   }
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+export const formatBirthDateWithAge = (value: Date | string) => {
+  const age = differenceInYears(new Date(), toDate(value));
+  return `${formatDate(value)} (${age} ${age === 1 ? "ano" : "anos"})`;
 };
 
 export const dateInputValue = (value: Date | string) =>
